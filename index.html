@@ -118,6 +118,7 @@
   /* GRIDS */
   .grid-main { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; align-items: stretch; }
   .grid-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; align-items: stretch; }
+  .grid-table { display: flex; flex-direction: column; gap: 16px; }
   
   /* CHART CONTAINERS */
   .chart-wrap { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
@@ -354,7 +355,7 @@
 
     <!-- TRANSACTIONS -->
     <section id="transactionsTab" class="hidden">
-      <div class="grid-table" style="display:flex; flex-direction:column; gap:16px;">
+      <div class="grid-table">
         <div class="card" style="border-top: 4px solid var(--green);">
           <h2 style="margin-bottom: 16px;">Tambah / Edit Transaksi</h2>
           <form id="txForm" class="form-grid">
@@ -415,7 +416,10 @@
         <div class="card">
           <h2>Daftar Utang & Piutang</h2>
           <div class="table-wrap">
-            <table><thead><tr><th>Jenis</th><th>Nama</th><th>Jatuh Tempo</th><th class="num">Sisa</th><th>Status</th><th></th></tr></thead><tbody id="debtRows"></tbody></table>
+            <table>
+              <thead><tr><th>Jenis</th><th>Nama</th><th>Total / Sisa</th><th>Progress</th><th>Status</th><th class="num">Aksi</th></tr></thead>
+              <tbody id="debtRows"></tbody>
+            </table>
             <div id="debtEmpty" class="empty">Belum ada catatan.</div>
           </div>
         </div>
@@ -446,7 +450,7 @@
           <form id="goalForm" class="form-grid" style="margin-top:20px;">
             <label class="field">Nama Target<input id="goalName" required placeholder="Dana Darurat"></label>
             <label class="field">Target Dana (Rp)<input id="goalTarget" type="number" min="1" required></label>
-            <label class="field">Dana Terkumpul (Rp)<input id="goalSaved" type="number" min="0" value="0" required></label>
+            <label class="field">Dana Awal (Rp)<input id="goalSaved" type="number" min="0" value="0" required></label>
             <label class="field">Target Tanggal<input id="goalDate" type="date"></label>
             <button type="submit" class="btn btn-primary" style="margin-top:10px;">Simpan Target</button>
             <div id="goalStatus" class="status"></div>
@@ -466,12 +470,12 @@ let sb=null,user=null,households=[],currentHouse=null,members=[],transactions=[]
 let chartLine=null, chartDoughnut=null, chartBar=null;
 let saldoAwal = 0; 
 let yIncomeTotal = 0, yExpenseTotal = 0;
-let editingTxId = null; // State untuk Edit
+let editingTxId = null;
 
 const today=new Date(), iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 $('month').value=iso(today).slice(0,7);$('txDate').value=iso(today);
 
-// TEMA
+// THEME
 const themeToggle = $('themeToggle');
 const themeIcon = $('themeIcon');
 function updateThemeIcon(theme) {
@@ -492,7 +496,6 @@ function toggleTheme() {
 themeToggle.onclick = toggleTheme;
 updateThemeIcon(document.documentElement.getAttribute('data-theme'));
 
-// WARNA KATEGORI
 const CAT_PALETTE = ['#e5484d','#f59e0b','#0da668','#2e9bff','#7c5cff','#ef5da8','#0fb5a3','#f97316','#06b6d4','#8b5cf6','#d946ef','#f43f5e'];
 function getCategoryColor(catName) {
   let c = catName.toLowerCase();
@@ -800,7 +803,6 @@ function renderTransactions(){ let list=transactions.filter(t=>$('txFilter').val
 $('txFilter').onchange=renderTransactions;
 function fillMemberSelect(){$('txMember').innerHTML=members.map(m=>`<option value="${m.user_id}" ${m.user_id===user.id?'selected':''}>${esc(m.profiles?.display_name||m.profiles?.email||'Anggota')}</option>`).join('')}
 
-// EDIT & DELETE LOGIC
 window.editTx = (id) => {
   let t = transactions.find(x => x.id === id);
   if(!t) return;
@@ -853,7 +855,6 @@ $('txForm').onsubmit=async e=>{
   cancelEdit();
   await loadData() 
 };
-
 window.deleteTx=async id=>{if(!confirm('Hapus transaksi ini?'))return;let {error}=await sb.from('transactions').delete().eq('id',id).eq('household_id',currentHouse);if(error)alert(error.message);else await loadData()};
 
 function renderBudgets(){ 
@@ -893,39 +894,90 @@ $('budgetForm').onsubmit=async e=>{
 window.removeBudget=async id=>{if(!confirm('Hapus anggaran?'))return;let {error}=await sb.from('budgets').delete().eq('id',id).eq('household_id',currentHouse);if(error)alert(error.message);else await loadData()};
 
 $('debtForm').onsubmit=async e=>{e.preventDefault();let p={household_id:currentHouse,type:$('debtType').value,party:$('debtParty').value.trim(),amount:Number($('debtAmount').value),paid_amount:0,due_date:$('debtDue').value||null,note:$('debtNote').value.trim(),created_by:user.id};let {error}=await sb.from('debts').insert(p);if(error){status('debtStatus',error.message,true);return}status('debtStatus','Catatan tersimpan.');$('debtForm').reset();await loadData()};
+
 function renderDebts(){
-  $('debtRows').innerHTML=debts.map(d=>`<tr>
-    <td>${d.type==='payable'?'Utang':'Piutang'}</td>
-    <td style="font-weight:600;">${esc(d.party)}</td>
-    <td>${esc(d.due_date||'—')}</td>
-    <td class="num">${money(Number(d.amount)-Number(d.paid_amount))}</td>
-    <td><span class="badge ${Number(d.paid_amount)>=Number(d.amount)?'bg-green':'bg-amber'}">${Number(d.paid_amount)>=Number(d.amount)?'Lunas':'Aktif'}</span></td>
-    <td class="num"><button class="btn" style="padding:6px 10px; font-size:11px;" onclick="payDebt('${d.id}')">Bayar</button></td>
-  </tr>`).join('');
+  $('debtRows').innerHTML=debts.map(d=>{
+    let total = Number(d.amount);
+    let paid = Number(d.paid_amount);
+    let remain = total - paid;
+    let pct = total > 0 ? (paid / total) * 100 : 0;
+    let isDone = paid >= total;
+    
+    return `<tr>
+      <td>${d.type==='payable'?'Utang':'Piutang'}</td>
+      <td style="font-weight:600;">${esc(d.party)}</td>
+      <td>
+        <div style="font-size:11px; color:var(--muted);">Sisa: <b>${money(remain)}</b></div>
+        <div style="font-size:10px; color:var(--faint);">dari ${money(total)}</div>
+      </td>
+      <td style="width:100px;">
+        <div style="height:6px; background:var(--card-soft); border-radius:4px; overflow:hidden;">
+          <div style="height:100%; width:${pct}%; background:var(--green); border-radius:4px;"></div>
+        </div>
+      </td>
+      <td><span class="badge ${isDone?'bg-green':'bg-amber'}">${isDone?'Lunas':'Aktif'}</span></td>
+      <td class="num" style="white-space:nowrap;">
+        ${!isDone ? `<button class="btn" style="padding:6px 10px; font-size:11px;" onclick="payDebt('${d.id}')">Cicil</button>` : ''}
+      </td>
+    </tr>`
+  }).join('');
   $('debtEmpty').classList.toggle('hidden',debts.length>0)
 }
-window.payDebt=async id=>{let d=debts.find(x=>x.id===id);if(!d)return;let remain=Number(d.amount)-Number(d.paid_amount);let v=prompt('Jumlah pembayaran (sisa '+money(remain)+')');if(v===null)return;let n=Number(v);if(!Number.isFinite(n)||n<=0||n>remain){alert('Nominal tidak valid.');return}let {error}=await sb.from('debts').update({paid_amount:Number(d.paid_amount)+n}).eq('id',id).eq('household_id',currentHouse);if(error)alert(error.message);else await loadData()};
+window.payDebt=async id=>{
+  let d=debts.find(x=>x.id===id);
+  if(!d) return;
+  let remain=Number(d.amount)-Number(d.paid_amount);
+  let v=prompt('Nominal cicilan (sisa hutang: '+money(remain)+')');
+  if(v===null) return;
+  let n=Number(v);
+  if(!Number.isFinite(n)||n<=0||n>remain){
+    alert('Nominal tidak valid atau melebihi sisa hutang.');
+    return;
+  }
+  let {error}=await sb.from('debts').update({paid_amount:Number(d.paid_amount)+n}).eq('id',id).eq('household_id',currentHouse);
+  if(error) alert(error.message);
+  else await loadData();
+};
 
 $('goalForm').onsubmit=async e=>{e.preventDefault();let p={household_id:currentHouse,name:$('goalName').value.trim(),target_amount:Number($('goalTarget').value),saved_amount:Number($('goalSaved').value),target_date:$('goalDate').value||null,created_by:user.id};let {error}=await sb.from('savings_goals').insert(p);if(error){status('goalStatus',error.message,true);return}status('goalStatus','Target tersimpan.');$('goalForm').reset();$('goalSaved').value='0';await loadData()};
+
 function renderGoals(){
   $('goalList').innerHTML=goals.length?goals.map(g=>{
-    let p=Math.min(100,Number(g.saved_amount)/Number(g.target_amount)*100);
+    let target = Number(g.target_amount);
+    let saved = Number(g.saved_amount);
+    let p = Math.min(100, (saved / target) * 100);
+    let isDone = saved >= target;
+
     return `<div style="margin-bottom:24px;">
       <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13.5px;">
         <b>${esc(g.name)}</b>
-        <span style="color:var(--muted); font-weight:600;">${Math.round(p)}%</span>
+        <span style="color:${isDone?'var(--green)':'var(--muted)'}; font-weight:600;">${Math.round(p)}%</span>
       </div>
       <div style="height:10px; background:var(--card-soft); border-radius:6px; overflow:hidden;">
-        <div style="height:100%; width:${p}%; background:var(--green); border-radius:6px;"></div>
+        <div style="height:100%; width:${p}%; background:${isDone?'var(--green)':'var(--blue)'}; border-radius:6px;"></div>
       </div>
       <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:12px; color:var(--faint); font-weight:600;">
-        <span>${money(g.saved_amount)} / ${money(g.target_amount)}</span>
-        <button class="btn" style="padding:4px 10px; font-size:11px;" onclick="addSaving('${g.id}')">Tambah Dana</button>
+        <span>${money(saved)} / ${money(target)}</span>
+        <button class="btn" style="padding:4px 10px; font-size:11px;" onclick="addSaving('${g.id}')">${isDone ? 'Lunas' : 'Cicil Tabungan'}</button>
       </div>
     </div>`
   }).join(''):'<div class="empty">Belum ada target tabungan.</div>'
 }
-window.addSaving=async id=>{let g=goals.find(x=>x.id===id);let v=prompt('Nominal yang ditabung');if(v===null)return;let n=Number(v);if(!Number.isFinite(n)||n<=0){alert('Nominal tidak valid.');return}let {error}=await sb.from('savings_goals').update({saved_amount:Number(g.saved_amount)+n}).eq('id',id).eq('household_id',currentHouse);if(error)alert(error.message);else await loadData()};
+window.addSaving=async id=>{
+  let g=goals.find(x=>x.id===id);
+  let remain = Number(g.target_amount) - Number(g.saved_amount);
+  if(remain <= 0) return;
+  let v=prompt('Nominal cicilan tabungan (kurang: '+money(remain)+')');
+  if(v===null) return;
+  let n=Number(v);
+  if(!Number.isFinite(n)||n<=0){
+    alert('Nominal tidak valid.');
+    return;
+  }
+  let {error}=await sb.from('savings_goals').update({saved_amount:Number(g.saved_amount)+n}).eq('id',id).eq('household_id',currentHouse);
+  if(error) alert(error.message);
+  else await loadData();
+};
 
 (async()=>{sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);let {data}=await sb.auth.getSession();if(data.session){user=data.session.user;try{await startApp()}catch(e){authUI()}}sb.auth.onAuthStateChange(async(event,session)=>{if(session&&!user){user=session.user;try{await startApp()}catch(e){}}else if(!session&&user){user=null;authUI()}})})();
 </script>
