@@ -293,29 +293,68 @@ function showTab(name){document.querySelectorAll('[data-tab]').forEach(b=>b.clas
 async function startApp(){appUI();await loadHouseholds();if(!households.length){let {error}=await sb.rpc('create_my_household',{household_name:'Keuangan Keluarga'});if(error){$('appNotice').textContent='Gagal membuat keluarga: '+error.message;$('appNotice').classList.remove('hidden');return}await loadHouseholds()}await loadData()}
 async function loadHouseholds(){let {data,error}=await sb.from('household_members').select('household_id,role,households(id,name)').eq('user_id',user.id);if(error)throw error;households=(data||[]).map(x=>({id:x.household_id,name:x.households?.name||'Keluarga',role:x.role}));if(!currentHouse||!households.some(h=>h.id===currentHouse))currentHouse=households[0]?.id||null;$('householdSelect').innerHTML=households.map(h=>`<option value="${h.id}" ${h.id===currentHouse?'selected':''}>${esc(h.name)}</option>`).join('');$('householdSelect').classList.toggle('hidden',households.length<2)}
 
+// Fungsi untuk mengambil data dari Supabase dengan pagination (menghindari limit 1000 baris)
+async function fetchAllPages(table, queryBuilder) {
+  let allData = [];
+  let from = 0;
+  let limit = 1000;
+  let hasMore = true;
+  
+  while (hasMore) {
+    let { data, error } = await queryBuilder.range(from, from + limit - 1);
+    if (error) { console.error(error); break; }
+    if (data && data.length > 0) allData = allData.concat(data);
+    
+    if (!data || data.length < limit) {
+      hasMore = false;
+    } else {
+      from += limit;
+    }
+  }
+  return allData;
+}
+
+async function getSaldoAwal(houseId, startDate) {
+  let sum = 0;
+  let from = 0;
+  let limit = 1000;
+  let hasMore = true;
+  while (hasMore) {
+    let { data, error } = await sb.from('transactions').select('amount, type').eq('household_id', houseId).lt('transaction_date', startDate).range(from, from + limit - 1);
+    if (error) { console.error(error); break; }
+    if (data && data.length > 0) {
+      data.forEach(t => {
+        sum += (t.type === 'income' ? Number(t.amount) : -Number(t.amount));
+      });
+    }
+    if (!data || data.length < limit) { hasMore = false; } else { from += limit; }
+  }
+  return sum;
+}
+
 async function loadData(){
   if(!currentHouse)return;
   let month=$('month').value; let start=month+'-01',end=new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),1); let endStr=iso(end);
   
-  let results=await Promise.all([
-    sb.from('transactions').select('*').eq('household_id',currentHouse).gte('transaction_date',start).lt('transaction_date',endStr).order('transaction_date',{ascending:false}).order('created_at',{ascending:false}),
+  // Ambil transaksi bulan ini (pakai pagination untuk aman)
+  transactions = await fetchAllPages('transactions', sb.from('transactions').select('*').eq('household_id',currentHouse).gte('transaction_date',start).lt('transaction_date',endStr).order('transaction_date',{ascending:false}).order('created_at',{ascending:false}));
+  
+  let results = await Promise.all([
     sb.from('budgets').select('*').eq('household_id',currentHouse).eq('month',start),
     sb.from('debts').select('*').eq('household_id',currentHouse).order('created_at',{ascending:false}),
     sb.from('savings_goals').select('*').eq('household_id',currentHouse).order('created_at',{ascending:false}),
-    sb.from('household_members').select('user_id,role,profiles(email,display_name)').eq('household_id',currentHouse),
-    sb.from('transactions').select('amount, type').eq('household_id',currentHouse).lt('transaction_date', start)
+    sb.from('household_members').select('user_id,role,profiles(email,display_name)').eq('household_id',currentHouse)
   ]);
   
   for(let r of results)if(r.error){console.error(r.error);$('appNotice').textContent='Gagal memuat data: '+r.error.message;$('appNotice').classList.remove('hidden');return}
   
-  transactions=results[0].data||[];
-  budgets=results[1].data||[];
-  debts=results[2].data||[];
-  goals=results[3].data||[];
-  members=results[4].data||[];
+  budgets=results[0].data||[];
+  debts=results[1].data||[];
+  goals=results[2].data||[];
+  members=results[3].data||[];
   
-  let prevTxs = results[5].data || [];
-  saldoAwal = prevTxs.reduce((s,t) => s + (t.type==='income'? Number(t.amount) : -Number(t.amount)), 0);
+  // Ambil saldo awal dengan pagination
+  saldoAwal = await getSaldoAwal(currentHouse, start);
 
   $('appNotice').classList.add('hidden'); 
   renderAll()
@@ -359,7 +398,7 @@ function renderGoals(){$('goalList').innerHTML=goals.length?goals.map(g=>{let p=
 window.addSaving=async id=>{let g=goals.find(x=>x.id===id);let v=prompt('Nominal yang ditabung');if(v===null)return;let n=Number(v);if(!Number.isFinite(n)||n<=0){alert('Nominal tidak valid.');return}let {error}=await sb.from('savings_goals').update({saved_amount:Number(g.saved_amount)+n}).eq('id',id).eq('household_id',currentHouse);if(error)alert(error.message);else await loadData()};
 $('exportBtn').onclick=()=>{if(!transactions.length){alert('Tidak ada data.');return}let rows=[['Tanggal','Jenis','Keterangan','Kategori','Nominal'],...transactions.map(t=>[fmtDate(t.transaction_date),t.type,t.note,t.category,t.amount])];let csv=rows.map(r=>r.map(x=>'"'+String(x??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');let a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'}));a.download='laporan.csv';a.click();URL.revokeObjectURL(a.href)};
 
-(async()=>{sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);let {data}=await sb.auth.getSession();if(data.session){user=data.session.user;try{await startApp()}catch(e){authUI()}}sb.auth.onAuthStateChange(async(event,session)=>{if(session&&!user){user=sess.user;try{await startApp()}catch(e){}}else if(!session&&user){user=null;authUI()}})})();
+(async()=>{sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);let {data}=await sb.auth.getSession();if(data.session){user=data.session.user;try{await startApp()}catch(e){authUI()}}sb.auth.onAuthStateChange(async(event,session)=>{if(session&&!user){user=session.user;try{await startApp()}catch(e){}}else if(!session&&user){user=null;authUI()}})})();
 </script>
 </body>
 </html>
