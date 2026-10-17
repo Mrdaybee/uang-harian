@@ -86,7 +86,7 @@
   .tab.active { background: var(--seg-on); color: var(--ink); box-shadow: 0 2px 8px rgba(15, 30, 50, 0.12); }
 
   /* CARDS */
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); padding: 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); padding: 20px; display: flex; flex-direction: column; }
   .card h2 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
   .card .sub { margin: 4px 0 0; font-size: 12.5px; color: var(--muted); font-weight: 500; }
   .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
@@ -103,16 +103,17 @@
   .kpi-note { font-size: 12px; color: var(--faint); font-weight: 500; }
 
   /* GRIDS */
-  .grid-main { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; align-items: start; }
-  .grid-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; align-items: start; }
+  .grid-main { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; align-items: stretch; }
+  .grid-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; align-items: stretch; }
   
-  .chart-box { position: relative; margin-top: 14px; height: 320px; width: 100%; }
-  .chart-box-sm { position: relative; margin-top: 14px; height: 320px; width: 100%; display: flex; flex-direction: column; }
-
-  /* CUSTOM LEGEND */
-  .doughnut-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin-top: 20px; font-size: 11px; font-weight: 600; color: var(--muted); }
-  .legend-item { display: flex; align-items: center; gap: 6px; }
-  .legend-color { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  /* CHART CONTAINERS */
+  .chart-wrap { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
+  .chart-box { position: relative; width: 100%; height: 320px; }
+  
+  /* LEGEND CUSTOM UNTUK DONUT */
+  .doughnut-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin-top: 24px; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .legend-color { width: 12px; height: 12px; border-radius: 4px; flex-shrink: 0; }
   .legend-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   /* TABLES */
@@ -154,6 +155,7 @@
   @media (max-width: 980px) {
     .kpis { grid-template-columns: repeat(2, 1fr); }
     .grid-main, .grid-bottom { grid-template-columns: 1fr; }
+    .chart-box { height: 300px; }
   }
   @media (max-width: 520px) {
     .wrap { padding: 16px 12px 32px; }
@@ -270,7 +272,9 @@
               <p class="sub">Perbandingan pemasukan dan pengeluaran</p>
             </div>
           </div>
-          <div class="chart-box"><canvas id="lineChart"></canvas></div>
+          <div class="chart-wrap">
+            <div class="chart-box"><canvas id="lineChart"></canvas></div>
+          </div>
         </section>
 
         <section class="card">
@@ -280,8 +284,8 @@
               <p class="sub">Berdasarkan kategori</p>
             </div>
           </div>
-          <div class="chart-box-sm">
-            <div style="position: relative; flex-grow: 1; width: 100%;"><canvas id="doughnutChart"></canvas></div>
+          <div class="chart-wrap">
+            <div style="position: relative; height: 220px; width: 100%; margin-top: 14px;"><canvas id="doughnutChart"></canvas></div>
             <div id="doughnutLegend" class="doughnut-legend"></div>
           </div>
         </section>
@@ -295,7 +299,9 @@
               <p class="sub">Total beban bulan terpilih</p>
             </div>
           </div>
-          <div class="chart-box-sm" style="height:260px;"><canvas id="barChart"></canvas></div>
+          <div class="chart-wrap">
+            <div class="chart-box" style="height: 260px;"><canvas id="barChart"></canvas></div>
+          </div>
         </section>
 
         <section class="card">
@@ -305,7 +311,7 @@
               <p class="sub">Persentase pemakaian anggaran per kategori</p>
             </div>
           </div>
-          <div id="budgetRealizationList" style="margin-top:16px; max-height:260px; overflow-y:auto; padding-right:8px;"></div>
+          <div id="budgetRealizationList" style="margin-top:16px; flex-grow: 1; overflow-y: auto; max-height: 300px; padding-right: 8px;"></div>
         </section>
       </div>
     </section>
@@ -597,7 +603,6 @@ function renderDashboard(){
     options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } } 
   });
 
-  // Render Custom Legend for Doughnut
   let legendHtml = '';
   catLabels.forEach((c, i) => {
     legendHtml += `
