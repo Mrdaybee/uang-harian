@@ -213,7 +213,6 @@
       <div class="controls">
         <select id="householdSelect" style="max-width: 140px;"></select>
         <input type="month" id="month" style="max-width: 140px;">
-        <button class="btn" id="exportBtn">Ekspor CSV</button>
         <button class="btn" id="logoutBtn">Keluar</button>
         <button class="btn-icon" id="themeToggle" title="Ganti Tema">
           <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
@@ -234,7 +233,6 @@
     <!-- DASHBOARD -->
     <section id="dashboardTab">
       <div class="kpis">
-        <!-- Bulanan -->
         <article class="card kpi">
           <div class="kpi-top">
             <span class="kpi-label">Pemasukan</span>
@@ -279,7 +277,6 @@
           <div class="kpi-foot"><span class="kpi-note">Rasio tabungan bulan ini</span></div>
         </article>
 
-        <!-- Tahunan -->
         <article class="card kpi">
           <div class="kpi-top">
             <span class="kpi-label">Pemasukan Tahun Ini</span>
@@ -357,21 +354,21 @@
 
     <!-- TRANSACTIONS -->
     <section id="transactionsTab" class="hidden">
-      <div class="grid-table">
+      <div class="grid-table" style="display:flex; flex-direction:column; gap:16px;">
         <div class="card" style="border-top: 4px solid var(--green);">
-          <h2 style="margin-bottom: 16px;">Tambah Transaksi Baru</h2>
+          <h2 style="margin-bottom: 16px;">Tambah / Edit Transaksi</h2>
           <form id="txForm" class="form-grid">
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
-              <label class="field">Jenis<select id="txType"><option value="expense">Pengeluaran</option><option value="income">Pemasukan</option></select></label>
-              <label class="field">Tanggal<input id="txDate" type="date" required></label>
-              <label class="field">Kategori<select id="txCategory"><option>Gaji</option><option>Bahan Masakan</option><option>Jajan Anak</option><option>Kebutuhan Anak</option><option>Perlengkapan Kebersihan</option><option>Tagihan</option><option>Transport</option><option>Hiburan/Jajan</option><option>Sosial/Donasi</option><option>Investasi</option><option>Lifestyle</option><option>Aset</option><option>Maintenance</option><option>Kesehatan</option><option>Tabungan Nuha</option><option>Lainnya</option></select></label>
+            <label class="field">Jenis<select id="txType"><option value="expense">Pengeluaran</option><option value="income">Pemasukan</option></select></label>
+            <label class="field">Tanggal<input id="txDate" type="date" required></label>
+            <label class="field">Kategori<select id="txCategory"><option>Gaji</option><option>Bahan Masakan</option><option>Jajan Anak</option><option>Kebutuhan Anak</option><option>Perlengkapan Kebersihan</option><option>Tagihan</option><option>Transport</option><option>Hiburan/Jajan</option><option>Sosial/Donasi</option><option>Investasi</option><option>Lifestyle</option><option>Aset</option><option>Maintenance</option><option>Kesehatan</option><option>Tabungan Nuha</option><option>Lainnya</option></select></label>
+            <label class="field">Keterangan<input id="txNote" maxlength="100" required placeholder="Misal: Belanja bulanan"></label>
+            <label class="field">Nominal (Rp)<input id="txAmount" type="number" min="1" required placeholder="50000"></label>
+            <label class="field">Anggota<select id="txMember"></select></label>
+            
+            <div style="display:flex; gap:10px; margin-top:8px;">
+              <button type="submit" class="btn btn-primary" id="btnSubmitTx" style="padding: 12px 24px;">Simpan Transaksi</button>
+              <button type="button" class="btn" id="btnCancelEdit" style="display:none; padding: 12px 24px;" onclick="cancelEdit()">Batal Edit</button>
             </div>
-            <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:16px;">
-              <label class="field">Keterangan<input id="txNote" maxlength="100" required placeholder="Misal: Belanja bulanan"></label>
-              <label class="field">Nominal (Rp)<input id="txAmount" type="number" min="1" required placeholder="50000"></label>
-              <label class="field">Anggota<select id="txMember"></select></label>
-            </div>
-            <button type="submit" class="btn btn-primary" style="justify-self: start; padding: 12px 30px;">Simpan Transaksi</button>
             <div id="txStatus" class="status"></div>
           </form>
         </div>
@@ -383,7 +380,7 @@
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Tanggal</th><th>Keterangan</th><th>Kategori</th><th>Jenis</th><th class="num">Nominal</th><th class="num"></th></tr></thead>
+              <thead><tr><th>Tanggal</th><th>Keterangan</th><th>Kategori</th><th>Jenis</th><th class="num">Nominal</th><th class="num">Aksi</th></tr></thead>
               <tbody id="allRows"></tbody>
             </table>
             <div class="empty hidden" id="allEmpty">Tidak ada transaksi.</div>
@@ -469,9 +466,12 @@ let sb=null,user=null,households=[],currentHouse=null,members=[],transactions=[]
 let chartLine=null, chartDoughnut=null, chartBar=null;
 let saldoAwal = 0; 
 let yIncomeTotal = 0, yExpenseTotal = 0;
+let editingTxId = null; // State untuk Edit
+
 const today=new Date(), iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 $('month').value=iso(today).slice(0,7);$('txDate').value=iso(today);
 
+// TEMA
 const themeToggle = $('themeToggle');
 const themeIcon = $('themeIcon');
 function updateThemeIcon(theme) {
@@ -492,6 +492,7 @@ function toggleTheme() {
 themeToggle.onclick = toggleTheme;
 updateThemeIcon(document.documentElement.getAttribute('data-theme'));
 
+// WARNA KATEGORI
 const CAT_PALETTE = ['#e5484d','#f59e0b','#0da668','#2e9bff','#7c5cff','#ef5da8','#0fb5a3','#f97316','#06b6d4','#8b5cf6','#d946ef','#f43f5e'];
 function getCategoryColor(catName) {
   let c = catName.toLowerCase();
@@ -620,7 +621,7 @@ async function loadData(){
   transactions = await fetchAllPages('transactions', sb.from('transactions').select('*').eq('household_id',currentHouse).gte('transaction_date',start).lt('transaction_date',endStr).order('transaction_date',{ascending:false}).order('created_at',{ascending:false}));
   
   let results = await Promise.all([
-    sb.from('budgets').select('*').eq('household_id',currentHouse).order('created_at', { ascending: true }), // ALL BUDGETS (NO MONTH FILTER)
+    sb.from('budgets').select('*').eq('household_id',currentHouse).order('created_at', { ascending: true }),
     sb.from('debts').select('*').eq('household_id',currentHouse).order('created_at',{ascending:false}),
     sb.from('savings_goals').select('*').eq('household_id',currentHouse).order('created_at',{ascending:false}),
     sb.from('household_members').select('user_id,role,profiles(email,display_name)').eq('household_id',currentHouse)
@@ -628,7 +629,6 @@ async function loadData(){
   
   for(let r of results)if(r.error){console.error(r.error);$('appNotice').textContent='Gagal memuat data: '+r.error.message;$('appNotice').classList.remove('hidden');return}
   
-  // Filter budgets so only the LATEST limit for each category is shown
   let budgetMap = {};
   results[0].data.forEach(b => { budgetMap[b.category] = b; });
   budgets = Object.values(budgetMap);
@@ -790,20 +790,70 @@ function txRow(t){
     <td>${getCategoryBadge(t.category)}</td>
     <td><span class="badge ${t.type==='income'?'bg-green':'bg-red'}">${t.type==='income'?'Masuk':'Keluar'}</span></td>
     <td class="num ${t.type==='income'?'text-green':'text-red'}">${money(t.amount)}</td>
-    <td class="num"><button class="btn" style="padding:6px 10px; font-size:11px;" onclick="deleteTx('${t.id}')">Hapus</button></td>
+    <td class="num" style="white-space:nowrap;">
+      <button class="btn" style="padding:6px 10px; font-size:11px; margin-right:4px;" onclick="editTx('${t.id}')">Edit</button>
+      <button class="btn" style="padding:6px 10px; font-size:11px; color:var(--red);" onclick="deleteTx('${t.id}')">Hapus</button>
+    </td>
   </tr>`;
 }
 function renderTransactions(){ let list=transactions.filter(t=>$('txFilter').value==='all'||t.type===$('txFilter').value); $('allRows').innerHTML=list.map(t=>txRow(t)).join(''); $('allEmpty').classList.toggle('hidden',list.length>0); }
 $('txFilter').onchange=renderTransactions;
 function fillMemberSelect(){$('txMember').innerHTML=members.map(m=>`<option value="${m.user_id}" ${m.user_id===user.id?'selected':''}>${esc(m.profiles?.display_name||m.profiles?.email||'Anggota')}</option>`).join('')}
 
+// EDIT & DELETE LOGIC
+window.editTx = (id) => {
+  let t = transactions.find(x => x.id === id);
+  if(!t) return;
+  
+  editingTxId = id;
+  $('txType').value = t.type;
+  $('txDate').value = t.transaction_date;
+  $('txCategory').value = t.category;
+  $('txNote').value = t.note;
+  $('txAmount').value = t.amount;
+  $('txMember').value = t.created_by;
+  
+  $('btnSubmitTx').textContent = 'Update Transaksi';
+  $('btnCancelEdit').style.display = 'inline-flex';
+  
+  $('txForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+};
+
+window.cancelEdit = () => {
+  editingTxId = null;
+  $('txForm').reset();
+  $('txDate').value = iso(today);
+  $('btnSubmitTx').textContent = 'Simpan Transaksi';
+  $('btnCancelEdit').style.display = 'none';
+};
+
 $('txForm').onsubmit=async e=>{ 
   e.preventDefault(); if(!currentHouse)return; 
-  let payload={household_id:currentHouse,type:$('txType').value,transaction_date:$('txDate').value,note:$('txNote').value.trim(),category:$('txCategory').value,amount:Number($('txAmount').value),created_by:user.id}; 
-  let {error}=await sb.from('transactions').insert(payload); 
+  let payload={
+    household_id:currentHouse,
+    type:$('txType').value,
+    transaction_date:$('txDate').value,
+    note:$('txNote').value.trim(),
+    category:$('txCategory').value,
+    amount:Number($('txAmount').value),
+    created_by:$('txMember').value
+  }; 
+  
+  let error;
+  if(editingTxId) {
+    let res = await sb.from('transactions').update(payload).eq('id', editingTxId);
+    error = res.error;
+  } else {
+    let res = await sb.from('transactions').insert(payload);
+    error = res.error;
+  }
+
   if(error){status('txStatus',error.message,true);return} 
-  status('txStatus','Transaksi berhasil disimpan!');$('txNote').value='';$('txAmount').value='';await loadData() 
+  status('txStatus', editingTxId ? 'Transaksi berhasil diubah!' : 'Transaksi berhasil disimpan!');
+  cancelEdit();
+  await loadData() 
 };
+
 window.deleteTx=async id=>{if(!confirm('Hapus transaksi ini?'))return;let {error}=await sb.from('transactions').delete().eq('id',id).eq('household_id',currentHouse);if(error)alert(error.message);else await loadData()};
 
 function renderBudgets(){ 
@@ -830,14 +880,12 @@ $('budgetForm').onsubmit=async e=>{
   e.preventDefault();
   let payload={
     household_id:currentHouse,
-    month:'2000-01-01', // Global dummy date
+    month:'2000-01-01',
     category:$('budgetCategory').value,
     limit_amount:Number($('budgetAmount').value),
     created_by:user.id
   };
-  // First delete existing budget for this category to avoid duplicates
   await sb.from('budgets').delete().eq('household_id',currentHouse).eq('category',payload.category);
-  
   let {error}=await sb.from('budgets').insert(payload);
   if(error){status('budgetStatus',error.message,true);return}
   status('budgetStatus','Anggaran tersimpan.');await loadData()
@@ -878,13 +926,6 @@ function renderGoals(){
   }).join(''):'<div class="empty">Belum ada target tabungan.</div>'
 }
 window.addSaving=async id=>{let g=goals.find(x=>x.id===id);let v=prompt('Nominal yang ditabung');if(v===null)return;let n=Number(v);if(!Number.isFinite(n)||n<=0){alert('Nominal tidak valid.');return}let {error}=await sb.from('savings_goals').update({saved_amount:Number(g.saved_amount)+n}).eq('id',id).eq('household_id',currentHouse);if(error)alert(error.message);else await loadData()};
-
-$('exportBtn').onclick=()=>{
-  if(!transactions.length){alert('Tidak ada data.');return}
-  let rows=[['Tanggal','Jenis','Keterangan','Kategori','Nominal'],...transactions.map(t=>[fmtDate(t.transaction_date),t.type,t.note,t.category,t.amount])];
-  let csv=rows.map(r=>r.map(x=>'"'+String(x??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');
-  let a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'}));a.download='laporan.csv';a.click();URL.revokeObjectURL(a.href)
-};
 
 (async()=>{sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);let {data}=await sb.auth.getSession();if(data.session){user=data.session.user;try{await startApp()}catch(e){authUI()}}sb.auth.onAuthStateChange(async(event,session)=>{if(session&&!user){user=session.user;try{await startApp()}catch(e){}}else if(!session&&user){user=null;authUI()}})})();
 </script>
