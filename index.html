@@ -104,8 +104,7 @@
 
   /* GRIDS */
   .grid-main { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; align-items: start; }
-  .grid-mid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; align-items: start; }
-  .grid-table { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  .grid-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; align-items: start; }
   
   .chart-box { position: relative; margin-top: 14px; height: 320px; width: 100%; }
   .chart-box-sm { position: relative; margin-top: 14px; height: 240px; width: 100%; }
@@ -120,7 +119,7 @@
   tbody tr:hover { background: rgba(0,0,0,0.02); }
   @media (prefers-color-scheme: dark) { tbody tr:hover { background: rgba(255,255,255,0.02); } }
   td.num, th.num { text-align: right; }
-  
+
   /* BADGES & TEXT */
   .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
   .bg-green { background: var(--green-soft); color: var(--green); }
@@ -148,7 +147,7 @@
 
   @media (max-width: 980px) {
     .kpis { grid-template-columns: repeat(2, 1fr); }
-    .grid-main, .grid-mid { grid-template-columns: 1fr; }
+    .grid-main, .grid-bottom { grid-template-columns: 1fr; }
   }
   @media (max-width: 520px) {
     .wrap { padding: 16px 12px 32px; }
@@ -279,14 +278,26 @@
         </section>
       </div>
 
-      <div class="card">
-        <div class="card-head">
-          <div>
-            <h2>Pengeluaran per Kategori</h2>
-            <p class="sub">Total beban bulan terpilih</p>
+      <div class="grid-bottom">
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2>Pengeluaran per Kategori</h2>
+              <p class="sub">Total beban bulan terpilih</p>
+            </div>
           </div>
-        </div>
-        <div class="chart-box-sm" style="height:260px;"><canvas id="barChart"></canvas></div>
+          <div class="chart-box-sm" style="height:260px;"><canvas id="barChart"></canvas></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2>Anggaran vs Realisasi</h2>
+              <p class="sub">Persentase pemakaian anggaran per kategori</p>
+            </div>
+          </div>
+          <div id="budgetRealizationList" style="margin-top:16px; max-height:260px; overflow-y:auto; padding-right:8px;"></div>
+        </section>
       </div>
     </section>
 
@@ -405,29 +416,36 @@ let saldoAwal = 0;
 const today=new Date(), iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 $('month').value=iso(today).slice(0,7);$('txDate').value=iso(today);
 
+// Palet warna konsisten untuk semua grafik
+const CAT_PALETTE = ['#e5484d','#f59e0b','#0da668','#2e9bff','#7c5cff','#ef5da8','#0fb5a3','#f97316','#06b6d4','#8b5cf6','#d946ef','#f43f5e'];
+function getCategoryColor(catName) {
+  let c = catName.toLowerCase();
+  if(c.includes('gaji')) return '#2e9bff'; // Biru
+  if(c.includes('bahan')) return '#f59e0b'; // Kuning
+  if(c.includes('jajan')) return '#8b5cf6'; // Ungu
+  if(c.includes('kebutuhan')) return '#e5484d'; // Merah
+  if(c.includes('kebersihan')) return '#0da668'; // Hijau
+  if(c.includes('tagihan')) return '#06b6d4'; // Cyan
+  if(c.includes('transport')) return '#f97316'; // Oranye
+  if(c.includes('hiburan')) return '#ef5da8'; // Pink
+  if(c.includes('sosial')) return '#facc15'; // Kuning terang
+  if(c.includes('investasi')) return '#0fb5a3'; // Teal
+  if(c.includes('lifestyle')) return '#fde047'; // Kuning pucat
+  if(c.includes('aset')) return '#a78bfa'; // Violet terang
+  if(c.includes('maintenance')) return '#94a3b8'; // Abu
+  if(c.includes('kesehatan')) return '#d6d3d1'; // Abu terang
+  if(c.includes('tabungan')) return '#e879f9'; // Fuchsia
+  return '#a1a1aa';
+}
+
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function status(id,msg,bad=false){$(id).textContent=msg;$(id).style.color=bad?'var(--red)':'var(--green)'; setTimeout(()=>{if($(id).textContent===msg)$(id).textContent=''}, 4000);}
 function authUI(){ $('authView').classList.remove('hidden');$('appView').classList.add('hidden') }
 function appUI(){ $('authView').classList.add('hidden');$('appView').classList.remove('hidden') }
 
 function getCategoryBadge(cat) {
-  let c = cat.toLowerCase();
-  if(c.includes('gaji')) return '<span class="badge bg-blue">Gaji</span>';
-  if(c.includes('bahan')) return '<span class="badge bg-amber">Bahan Masakan</span>';
-  if(c.includes('jajan')) return '<span class="badge bg-violet">Jajan Anak</span>';
-  if(c.includes('kebutuhan')) return '<span class="badge bg-red">Kebutuhan Anak</span>';
-  if(c.includes('kebersihan')) return '<span class="badge bg-green">Perlengkapan Kebersihan</span>';
-  if(c.includes('tagihan')) return '<span class="badge bg-blue">Tagihan</span>';
-  if(c.includes('transport')) return '<span class="badge bg-amber">Transport</span>';
-  if(c.includes('hiburan')) return '<span class="badge bg-red">Hiburan/Jajan</span>';
-  if(c.includes('sosial')) return '<span class="badge bg-amber">Sosial/Donasi</span>';
-  if(c.includes('investasi')) return '<span class="badge bg-green">Investasi</span>';
-  if(c.includes('lifestyle')) return '<span class="badge bg-amber">Lifestyle</span>';
-  if(c.includes('aset')) return '<span class="badge bg-violet">Aset</span>';
-  if(c.includes('maintenance')) return '<span class="badge bg-slate">Maintenance</span>';
-  if(c.includes('kesehatan')) return '<span class="badge bg-slate">Kesehatan</span>';
-  if(c.includes('tabungan')) return '<span class="badge bg-violet">Tabungan Nuha</span>';
-  return `<span class="badge bg-slate">${esc(cat)}</span>`;
+  let color = getCategoryColor(cat);
+  return `<span class="badge" style="background:${color}20; color:${color};">${esc(cat)}</span>`;
 }
 
 $('authSwitch').onclick=()=>{signupMode=!signupMode;$('authTitle').textContent=signupMode?'Buat Akun Baru':'Masuk Akun';$('authSubmit').textContent=signupMode?'Daftar':'Masuk';$('authSwitchText').textContent=signupMode?'Sudah punya akun?':'Belum punya akun?';$('authSwitch').textContent=signupMode?'Masuk':'Daftar';status('authStatus','')};
@@ -532,22 +550,105 @@ function renderDashboard(){
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', align: 'end', labels: { color: textColor, usePointStyle: true, boxWidth: 8, font: {family: 'Plus Jakarta Sans', size: 12} } }, tooltip: { backgroundColor: isDark ? '#1a2434' : '#fff', titleColor: isDark ? '#fff' : '#121a28', bodyColor: textColor, borderColor: gridColor, borderWidth: 1, padding: 12 } }, scales: { x: { grid: { display: false, drawBorder: false }, ticks: { color: textColor, maxTicksLimit: 8 } }, y: { grid: { color: gridColor, drawBorder: false }, ticks: { color: textColor, callback: v => 'Rp' + (v/1000) + 'k' } } } } 
   });
 
-  let cats={}; out.forEach(t=>cats[t.category]=(cats[t.category]||0)+Number(t.amount)); let sortedCats = Object.entries(cats).sort((a,b)=>b[1]-a[1]); let catLabels = sortedCats.map(x=>x[0]); let catData = sortedCats.map(x=>x[1]); 
-  let catColors = ['#e5484d','#f59e0b','#0da668','#2e9bff','#7c5cff','#ef5da8','#0fb5a3','#f97316','#06b6d4','#8b5cf6','#d946ef','#f43f5e'];
+  // Doughnut Chart
+  let cats={}; out.forEach(t=>cats[t.category]=(cats[t.category]||0)+Number(t.amount)); 
+  let sortedCats = Object.entries(cats).sort((a,b)=>b[1]-a[1]); 
+  let catLabels = sortedCats.map(x=>x[0]); 
+  let catData = sortedCats.map(x=>x[1]); 
+  let catColors = catLabels.map(c => getCategoryColor(c));
   
   if(chartDoughnut) chartDoughnut.destroy(); 
   chartDoughnut = new Chart($('doughnutChart'), { 
     type: 'doughnut', 
-    data: { labels: catLabels.length ? catLabels : ['Belum Ada'], datasets: [{ data: catData.length ? catData : [1], backgroundColor: catColors, borderWidth: 0, hoverOffset: 4 }] }, 
+    data: { labels: catLabels.length ? catLabels : ['Belum Ada'], datasets: [{ data: catData.length ? catData : [1], backgroundColor: catLabels.length ? catColors : ['#a1a1aa'], borderWidth: 0, hoverOffset: 4 }] }, 
     options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right', labels: { color: textColor, boxWidth: 10, usePointStyle: true, font: {size: 11} } }, tooltip: { backgroundColor: isDark ? '#1a2434' : '#fff', titleColor: isDark ? '#fff' : '#121a28', bodyColor: textColor, borderColor: gridColor, borderWidth: 1, padding: 12 } } } 
   });
 
+  // Bar Chart (3D & Colorful)
   if(chartBar) chartBar.destroy(); 
   chartBar = new Chart($('barChart'), { 
     type: 'bar', 
-    data: { labels: catLabels, datasets: [{ label: 'Pengeluaran', data: catData, backgroundColor: '#e5484d', borderRadius: 6, borderSkipped: false }] }, 
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: isDark ? '#1a2434' : '#fff', titleColor: isDark ? '#fff' : '#121a28', bodyColor: textColor, borderColor: gridColor, borderWidth: 1, padding: 12 } }, scales: { x: { grid: { display: false, drawBorder: false }, ticks: { color: textColor, font: {size: 11} } }, y: { grid: { color: gridColor, drawBorder: false }, ticks: { color: textColor, callback: v => 'Rp' + (v/1000) + 'k' } } } } 
+    data: { 
+      labels: catLabels, 
+      datasets: [{ 
+        label: 'Pengeluaran', 
+        data: catData, 
+        backgroundColor: (context) => {
+          const chart = context.chart;
+          const {ctx, chartArea} = chart;
+          if (!chartArea) return null;
+          const color = getCategoryColor(catLabels[context.dataIndex]);
+          const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+          gradient.addColorStop(0, color);
+          gradient.addColorStop(1, color + 'B3'); // Sedikit transparan di atas untuk efek 3D
+          return gradient;
+        },
+        borderColor: (context) => getCategoryColor(catLabels[context.dataIndex]),
+        borderWidth: { bottom: 4 }, // Efek bayangan 3D di bawah
+        borderRadius: 6, 
+        borderSkipped: false 
+      }] 
+    }, 
+    options: { 
+      responsive: true, 
+      maintainAspectRatio: false, 
+      plugins: { 
+        legend: { display: false }, 
+        tooltip: { 
+          backgroundColor: isDark ? '#1a2434' : '#fff', 
+          titleColor: isDark ? '#fff' : '#121a28', 
+          bodyColor: textColor, 
+          borderColor: gridColor, 
+          borderWidth: 1, 
+          padding: 12 
+        } 
+      }, 
+      scales: { 
+        x: { grid: { display: false, drawBorder: false }, ticks: { color: textColor, font: {size: 11} } }, 
+        y: { grid: { color: gridColor, drawBorder: false }, ticks: { color: textColor, callback: v => 'Rp' + (v/1000) + 'k' } } 
+      } 
+    } 
   });
+
+  // Anggaran vs Realisasi (Budget Tracking)
+  let spent = {}; out.forEach(t => spent[t.category] = (spent[t.category]||0) + Number(t.amount));
+  let budgetHtml = '';
+  let hasBudget = false;
+  
+  budgets.forEach(b => {
+    hasBudget = true;
+    let s = spent[b.category] || 0;
+    let limit = Number(b.limit_amount);
+    let p = Math.min(100, (s / limit) * 100);
+    let color = getCategoryColor(b.category);
+    let isOver = s > limit;
+    
+    budgetHtml += `
+      <div style="margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px; font-weight:600;">
+          <span style="display:flex; align-items:center; gap:8px;">
+            <span style="width:10px; height:10px; border-radius:3px; background:${color};"></span>
+            ${esc(b.category)}
+          </span>
+          <span style="font-variant-numeric:tabular-nums;">
+            ${money(s)} <span style="color:var(--muted); font-weight:500; font-size:11px;">/ ${money(limit)}</span>
+          </span>
+        </div>
+        <div style="height:8px; background:var(--card-soft); border-radius:4px; overflow:hidden; position:relative;">
+          <div style="height:100%; width:${p}%; background:${color}; border-radius:4px;"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:11px; font-weight:600; color:var(--faint);">
+          <span>${isOver ? '<span style="color:var(--red)">Melebihi anggaran</span>' : 'Aman'}</span>
+          <span>${Math.round(p)}% terpakai</span>
+        </div>
+      </div>
+    `;
+  });
+
+  if(!hasBudget) {
+    budgetHtml = '<div class="empty">Belum ada anggaran yang diatur untuk bulan ini.</div>';
+  }
+  $('budgetRealizationList').innerHTML = budgetHtml;
 }
 
 function txRow(t){
@@ -577,13 +678,14 @@ function renderBudgets(){
   let spent={};transactions.filter(t=>t.type==='expense').forEach(t=>spent[t.category]=(spent[t.category]||0)+Number(t.amount)); 
   $('budgetList').innerHTML=budgets.length?budgets.map(b=>{ 
     let s=spent[b.category]||0,p=Math.min(100,s/Number(b.limit_amount)*100),isOver=p>=100; 
+    let color = getCategoryColor(b.category);
     return `<div style="margin-bottom:20px;">
       <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13.5px; align-items:center;">
         <b>${getCategoryBadge(b.category)}</b>
         <span style="color:var(--muted); font-weight:600;">${money(s)} / ${money(b.limit_amount)}</span>
       </div>
       <div style="height:10px; background:var(--card-soft); border-radius:6px; overflow:hidden;">
-        <div style="height:100%; width:${p}%; background:${isOver?'var(--red)':'var(--green)'}; border-radius:6px; transition:width 0.5s;"></div>
+        <div style="height:100%; width:${p}%; background:${isOver?'var(--red)':color}; border-radius:6px; transition:width 0.5s;"></div>
       </div>
       <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:12px; color:var(--faint); font-weight:600;">
         <span>${isOver?'Melebihi batas!':Math.round(p)+'% terpakai'}</span>
