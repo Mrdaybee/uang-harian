@@ -136,7 +136,7 @@ tbody tr:hover { background: rgba(255,255,255,0.03); }
       <div class="grid metrics">
         <div class="card"><div class="metric-label">Pemasukan</div><div class="metric green" id="mIncome">Rp0</div><div class="muted" id="mIncomeCount">0 transaksi</div></div>
         <div class="card"><div class="metric-label">Pengeluaran</div><div class="metric red" id="mExpense">Rp0</div><div class="muted" id="mExpenseCount">0 transaksi</div></div>
-        <div class="card"><div class="metric-label">Saldo Bersih</div><div class="metric" id="mBalance">Rp0</div><div class="muted">Pemasukan - Pengeluaran</div></div>
+        <div class="card"><div class="metric-label">Total Saldo Akhir</div><div class="metric" id="mBalance">Rp0</div><div class="muted" id="mBalanceHint">Saldo Awal: Rp0</div></div>
         <div class="card"><div class="metric-label">Saving Rate</div><div class="metric purple" id="mSavingRate">0%</div><div class="muted">Rasio tabungan bulan ini</div></div>
       </div>
       <div class="grid layout-dashboard" style="margin-bottom:24px;"><div class="card"><h3>Arus Kas Harian</h3><div class="chart-container"><canvas id="lineChart"></canvas></div></div></div>
@@ -246,6 +246,7 @@ const money = n => new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR
 const fmtDate = d => { if(!d) return '—'; let p=d.split('-'); return `${p[2]}/${p[1]}/${p[0]}`; }
 let sb=null,user=null,households=[],currentHouse=null,members=[],transactions=[],budgets=[],debts=[],goals=[],signupMode=false;
 let chartLine=null, chartDoughnut=null, chartBar=null;
+let saldoAwal = 0; // Variabel baru untuk menyimpan saldo dari bulan-bulan sebelumnya
 const today=new Date(), iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 $('month').value=iso(today).slice(0,7);$('txDate').value=iso(today);
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -296,22 +297,45 @@ async function loadData(){
   if(!currentHouse)return;
   let month=$('month').value; let start=month+'-01',end=new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),1); let endStr=iso(end);
   
+  // Ambil transaksi bulan ini + transaksi bulan sebelumnya (untuk saldo awal)
   let results=await Promise.all([
-    // PERBAIKAN: Urutkan descending (terbaru ke terlama)
     sb.from('transactions').select('*').eq('household_id',currentHouse).gte('transaction_date',start).lt('transaction_date',endStr).order('transaction_date',{ascending:false}).order('created_at',{ascending:false}),
     sb.from('budgets').select('*').eq('household_id',currentHouse).eq('month',start),
     sb.from('debts').select('*').eq('household_id',currentHouse).order('created_at',{ascending:false}),
     sb.from('savings_goals').select('*').eq('household_id',currentHouse).order('created_at',{ascending:false}),
-    sb.from('household_members').select('user_id,role,profiles(email,display_name)').eq('household_id',currentHouse)
+    sb.from('household_members').select('user_id,role,profiles(email,display_name)').eq('household_id',currentHouse),
+    sb.from('transactions').select('amount, type').eq('household_id',currentHouse).lt('transaction_date', start) // Saldo bulan lalu
   ]);
+  
   for(let r of results)if(r.error){console.error(r.error);$('appNotice').textContent='Gagal memuat data: '+r.error.message;$('appNotice').classList.remove('hidden');return}
-  transactions=results[0].data||[]; budgets=results[1].data||[]; debts=results[2].data||[]; goals=results[3].data||[]; members=results[4].data||[];
-  $('appNotice').classList.add('hidden'); renderAll()
+  
+  transactions=results[0].data||[];
+  budgets=results[1].data||[];
+  debts=results[2].data||[];
+  goals=results[3].data||[];
+  members=results[4].data||[];
+  
+  // Hitung Saldo Awal dari transaksi bulan lalu
+  let prevTxs = results[5].data || [];
+  saldoAwal = prevTxs.reduce((s,t) => s + (t.type==='income'? Number(t.amount) : -Number(t.amount)), 0);
+
+  $('appNotice').classList.add('hidden'); 
+  renderAll()
 }
+
 function renderAll(){ renderDashboard();renderTransactions();renderBudgets();renderDebts();renderGoals();fillMemberSelect(); }
 function renderDashboard(){
-  let inc=transactions.filter(t=>t.type==='income'),out=transactions.filter(t=>t.type==='expense'); let sum=a=>a.reduce((s,t)=>s+Number(t.amount),0),I=sum(inc),O=sum(out);
-  $('mIncome').textContent=money(I); $('mIncomeCount').textContent=inc.length+' transaksi'; $('mExpense').textContent=money(O); $('mExpenseCount').textContent=out.length+' transaksi'; $('mBalance').textContent=money(I-O);
+  let inc=transactions.filter(t=>t.type==='income'),out=transactions.filter(t=>t.type==='expense'); 
+  let sum=a=>a.reduce((s,t)=>s+Number(t.amount),0),I=sum(inc),O=sum(out);
+  
+  $('mIncome').textContent=money(I); $('mIncomeCount').textContent=inc.length+' transaksi'; 
+  $('mExpense').textContent=money(O); $('mExpenseCount').textContent=out.length+' transaksi'; 
+  
+  // Total Saldo = Saldo Awal (bulan lalu) + Pemasukan Bulan Ini - Pengeluaran Bulan Ini
+  let saldoAkhir = saldoAwal + I - O;
+  $('mBalance').textContent = money(saldoAkhir);
+  $('mBalanceHint').textContent = 'Saldo Awal: ' + money(saldoAwal);
+  
   let sRate = I > 0 ? ((I - O) / I) * 100 : 0; $('mSavingRate').textContent = Math.round(sRate) + '%';
   let [y,m]=$('month').value.split('-').map(Number),days=new Date(y,m,0).getDate(); let daysData = Array.from({length:days},(_,i)=>String(i+1).padStart(2,'0'));
   let inData = Array(days).fill(0), outData = Array(days).fill(0);
