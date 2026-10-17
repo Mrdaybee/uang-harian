@@ -297,8 +297,8 @@ async function loadData(){
   let month=$('month').value; let start=month+'-01',end=new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),1); let endStr=iso(end);
   
   let results=await Promise.all([
-    // PERBAIKAN: Urutkan berdasarkan tanggal (terlama ke terbaru) DAN waktu input (created_at terlama ke terbaru)
-    sb.from('transactions').select('*').eq('household_id',currentHouse).gte('transaction_date',start).lt('transaction_date',endStr).order('transaction_date',{ascending:true}).order('created_at',{ascending:true}),
+    // PERBAIKAN: Urutkan descending (terbaru ke terlama)
+    sb.from('transactions').select('*').eq('household_id',currentHouse).gte('transaction_date',start).lt('transaction_date',endStr).order('transaction_date',{ascending:false}).order('created_at',{ascending:false}),
     sb.from('budgets').select('*').eq('household_id',currentHouse).eq('month',start),
     sb.from('debts').select('*').eq('household_id',currentHouse).order('created_at',{ascending:false}),
     sb.from('savings_goals').select('*').eq('household_id',currentHouse).order('created_at',{ascending:false}),
