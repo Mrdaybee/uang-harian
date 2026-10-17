@@ -3,16 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
 <title>Uang Harian — Dashboard Finansial</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  // Cegah layar berkedip saat ganti tema
+  (function() {
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  })();
+</script>
 <style>
   :root {
-    color-scheme: light dark;
     --bg: #f2f5f9;
     --card: #ffffff;
     --card-soft: #f8fafc;
@@ -36,31 +46,32 @@
     --seg-bg: #e8eef5;
     --seg-on: #ffffff;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0b1017;
-      --card: #141c28;
-      --card-soft: #1a2434;
-      --ink: #edf3fa;
-      --muted: #9db0c6;
-      --faint: #6d829c;
-      --line: #243145;
-      --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-      --green-soft: #0d2f22;
-      --red-soft: #3a1d20;
-      --blue-soft: #12283f;
-      --violet-soft: #241d47;
-      --amber-soft: #38300f;
-      --seg-bg: #1a2434;
-      --seg-on: #2a3850;
-    }
+  
+  [data-theme="dark"] {
+    --bg: #0b1017;
+    --card: #141c28;
+    --card-soft: #1a2434;
+    --ink: #edf3fa;
+    --muted: #9db0c6;
+    --faint: #6d829c;
+    --line: #243145;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    --green-soft: #0d2f22;
+    --red-soft: #3a1d20;
+    --blue-soft: #12283f;
+    --violet-soft: #241d47;
+    --amber-soft: #38300f;
+    --seg-bg: #1a2434;
+    --seg-on: #2a3850;
   }
+
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body {
     font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
     background: var(--bg); color: var(--ink);
     -webkit-font-smoothing: antialiased;
+    transition: background-color 0.3s, color 0.3s;
   }
   .wrap { max-width: 1280px; margin: 0 auto; padding: 26px 20px 40px; }
   
@@ -74,19 +85,22 @@
   .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; background: var(--card); padding: 6px; border-radius: 14px; border: 1px solid var(--line); box-shadow: var(--shadow); }
   .controls input, .controls select { background: transparent; border: none; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--ink); padding: 8px 12px; outline: none; }
   .controls select option { background: var(--card); color: var(--ink); }
-  .btn { border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 8px 16px; border-radius: 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .btn { border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 8px 16px; border-radius: 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; }
   .btn:hover { background: var(--card-soft); }
   .btn-primary { background: var(--green); color: #fff; border-color: var(--green); }
   .btn-primary:hover { background: #0b8f59; }
+  .btn-icon { padding: 8px; border-radius: 50%; width: 36px; height: 36px; border: none; background: transparent; cursor: pointer; color: var(--muted); }
+  .btn-icon:hover { background: var(--card-soft); color: var(--ink); }
+  .btn-icon svg { width: 20px; height: 20px; }
 
   /* TABS */
-  .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 24px; background: var(--seg-bg); padding: 4px; border-radius: 12px; width: fit-content; }
+  .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 24px; background: var(--seg-bg); padding: 4px; border-radius: 12px; width: fit-content; transition: background 0.3s; }
   .tab { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13.5px; font-weight: 600; padding: 8px 16px; border-radius: 9px; cursor: pointer; transition: background 0.15s, color 0.15s; }
   .tab:hover { color: var(--ink); }
   .tab.active { background: var(--seg-on); color: var(--ink); box-shadow: 0 2px 8px rgba(15, 30, 50, 0.12); }
 
   /* CARDS */
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); padding: 20px; display: flex; flex-direction: column; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); padding: 20px; display: flex; flex-direction: column; transition: background 0.3s, border-color 0.3s; }
   .card h2 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
   .card .sub { margin: 4px 0 0; font-size: 12.5px; color: var(--muted); font-weight: 500; }
   .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
@@ -96,7 +110,7 @@
   .kpi { position: relative; overflow: hidden; }
   .kpi-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .kpi-label { font-size: 12.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
-  .kpi-icon { width: 36px; height: 36px; border-radius: 10px; flex: none; display: grid; place-items: center; }
+  .kpi-icon { width: 36px; height: 36px; border-radius: 10px; flex: none; display: grid; place-items: center; transition: background 0.3s; }
   .kpi-icon svg { width: 18px; height: 18px; }
   .kpi-value { font-size: clamp(22px, 2.5vw, 28px); font-weight: 800; letter-spacing: -0.02em; margin-top: 10px; font-variant-numeric: tabular-nums; }
   .kpi-foot { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
@@ -117,14 +131,14 @@
   .legend-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   /* TABLES */
-  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--card-soft); margin-top: 12px; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--card-soft); margin-top: 12px; transition: background 0.3s, border-color 0.3s; }
   table { width: 100%; border-collapse: collapse; min-width: 650px; }
   th, td { text-align: left; padding: 12px 16px; font-size: 13.5px; border-bottom: 1px solid var(--line); }
-  thead th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--faint); font-weight: 700; background: var(--card-soft); }
+  thead th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--faint); font-weight: 700; background: var(--card-soft); transition: background 0.3s; }
   tbody td { font-variant-numeric: tabular-nums; }
   tbody tr:last-child td { border-bottom: 0; }
   tbody tr:hover { background: rgba(0,0,0,0.02); }
-  @media (prefers-color-scheme: dark) { tbody tr:hover { background: rgba(255,255,255,0.02); } }
+  [data-theme="dark"] tbody tr:hover { background: rgba(255,255,255,0.02); }
   td.num, th.num { text-align: right; }
 
   /* BADGES & TEXT */
@@ -141,7 +155,7 @@
   /* FORMS */
   .form-grid { display: grid; gap: 16px; }
   .field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
-  .field input, .field select { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; font-size: 14px; transition: border 0.2s; }
+  .field input, .field select { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; font-size: 14px; transition: border 0.2s, background 0.3s, color 0.3s; }
   .field input:focus, .field select:focus { border-color: var(--green); outline: none; }
   .status { font-size: 13px; font-weight: 600; margin-top: 10px; min-height: 18px; }
   
@@ -203,6 +217,10 @@
         <input type="month" id="month" style="max-width: 140px;">
         <button class="btn" id="exportBtn">Ekspor CSV</button>
         <button class="btn" id="logoutBtn">Keluar</button>
+        <button class="btn-icon" id="themeToggle" title="Ganti Tema">
+          <!-- Icon Sun (default) -->
+          <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+        </button>
       </div>
     </header>
     
@@ -431,6 +449,30 @@ let saldoAwal = 0;
 const today=new Date(), iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 $('month').value=iso(today).slice(0,7);$('txDate').value=iso(today);
 
+// THEME LOGIC
+const themeToggle = $('themeToggle');
+const themeIcon = $('themeIcon');
+
+function updateThemeIcon(theme) {
+  if (theme === 'dark') {
+    themeIcon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'; // Moon
+  } else {
+    themeIcon.innerHTML = '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>'; // Sun
+  }
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  updateThemeIcon(next);
+  if (user) renderDashboard(); // Update chart colors
+}
+
+themeToggle.onclick = toggleTheme;
+updateThemeIcon(document.documentElement.getAttribute('data-theme'));
+
 const CAT_PALETTE = ['#e5484d','#f59e0b','#0da668','#2e9bff','#7c5cff','#ef5da8','#0fb5a3','#f97316','#06b6d4','#8b5cf6','#d946ef','#f43f5e'];
 function getCategoryColor(catName) {
   let c = catName.toLowerCase();
@@ -576,7 +618,7 @@ function renderDashboard(){
   let inData = Array(days).fill(0), outData = Array(days).fill(0);
   transactions.forEach(t=>{ let day = Number(t.transaction_date.slice(8)) - 1; if(t.type==='income') inData[day] += Number(t.amount); else outData[day] += Number(t.amount); });
   
-  const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const textColor = isDark ? '#9db0c6' : '#5d6f86';
   const gridColor = isDark ? '#243145' : '#e3eaf2';
 
