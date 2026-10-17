@@ -107,7 +107,13 @@
   .grid-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; align-items: start; }
   
   .chart-box { position: relative; margin-top: 14px; height: 320px; width: 100%; }
-  .chart-box-sm { position: relative; margin-top: 14px; height: 240px; width: 100%; }
+  .chart-box-sm { position: relative; margin-top: 14px; height: 320px; width: 100%; display: flex; flex-direction: column; }
+
+  /* CUSTOM LEGEND */
+  .doughnut-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin-top: 20px; font-size: 11px; font-weight: 600; color: var(--muted); }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-color { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  .legend-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   /* TABLES */
   .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--card-soft); margin-top: 12px; }
@@ -274,7 +280,10 @@
               <p class="sub">Berdasarkan kategori</p>
             </div>
           </div>
-          <div class="chart-box-sm"><canvas id="doughnutChart"></canvas></div>
+          <div class="chart-box-sm">
+            <div style="position: relative; flex-grow: 1; width: 100%;"><canvas id="doughnutChart"></canvas></div>
+            <div id="doughnutLegend" class="doughnut-legend"></div>
+          </div>
         </section>
       </div>
 
@@ -585,8 +594,20 @@ function renderDashboard(){
   chartDoughnut = new Chart($('doughnutChart'), { 
     type: 'doughnut', 
     data: { labels: catLabels.length ? catLabels : ['Belum Ada'], datasets: [{ data: catData.length ? catData : [1], backgroundColor: catLabels.length ? catColors : ['#a1a1aa'], borderWidth: 0, hoverOffset: 4 }] }, 
-    options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right', labels: { color: textColor, boxWidth: 10, usePointStyle: true, font: {size: 11} } }, tooltip: { backgroundColor: isDark ? '#1a2434' : '#fff', titleColor: isDark ? '#fff' : '#121a28', bodyColor: textColor, borderColor: gridColor, borderWidth: 1, padding: 12 } } } 
+    options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } } 
   });
+
+  // Render Custom Legend for Doughnut
+  let legendHtml = '';
+  catLabels.forEach((c, i) => {
+    legendHtml += `
+      <div class="legend-item">
+        <span class="legend-color" style="background:${catColors[i]};"></span>
+        <span class="legend-text">${esc(c)}</span>
+      </div>
+    `;
+  });
+  $('doughnutLegend').innerHTML = legendHtml;
 
   if(chartBar) chartBar.destroy(); 
   chartBar = new Chart($('barChart'), { 
