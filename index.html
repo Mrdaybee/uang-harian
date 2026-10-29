@@ -4,12 +4,44 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Uang Harian — Dashboard Finansial</title>
+<!-- Favicon & Logo fix -->
+<link rel="icon" type="image/png" href="Logo.png">
+<link rel="apple-touch-icon" href="Logo.png">
+<!-- PWA Manifest Inline -->
+<link id="manifest-placeholder" rel="manifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+  // PWA Generator Inline
+  (function() {
+    const manifest = {
+      name: "Uang Harian",
+      short_name: "Uang Harian",
+      start_url: ".",
+      display: "standalone",
+      background_color: "#F8FAFC",
+      theme_color: "#8B5CF6",
+      icons: [{ src: "Logo.png", sizes: "192x192 512x512", type: "image/png" }]
+    };
+    const stringManifest = JSON.stringify(manifest);
+    const blob = new Blob([stringManifest], {type: 'application/json'});
+    document.querySelector('#manifest-placeholder').setAttribute('href', URL.createObjectURL(blob));
+
+    if ('serviceWorker' in navigator) {
+      const swCode = `
+        self.addEventListener('install', e => self.skipWaiting());
+        self.addEventListener('activate', e => self.clients.claim());
+        self.addEventListener('fetch', e => {});
+      `;
+      const swBlob = new Blob([swCode], {type: 'application/javascript'});
+      navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(err => console.log('SW error', err));
+    }
+  })();
+
+  // Theme Loader
   (function() {
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -22,8 +54,9 @@
 </script>
 <style>
   :root {
+    /* Light Pastel Theme */
     --bg: #F8FAFC;
-    --card: rgba(255, 255, 255, 0.75);
+    --card: rgba(255, 255, 255, 0.85);
     --card-solid: #FFFFFF;
     --card-soft: #F1F5F9;
     --ink: #1E293B;
@@ -31,36 +64,43 @@
     --faint: #94A3B8;
     --line: #E2E8F0;
     --shadow: 0 10px 40px -10px rgba(0,0,0,0.08);
-    
-    --green: #10B981; --green-soft: #D1FAE5;
-    --red: #F43F5E; --red-soft: #FFE4E6;
-    --blue: #3B82F6; --blue-soft: #DBEAFE;
-    --violet: #8B5CF6; --violet-soft: #EDE9FE;
-    --amber: #F59E0B; --amber-soft: #FEF3C7;
-    
+
+    /* Pastel Colors */
+    --p-blue: #DBEAFE; --p-blue-txt: #1E40AF;
+    --p-green: #D1FAE5; --p-green-txt: #065F46;
+    --p-red: #FFE4E6; --p-red-txt: #9F1239;
+    --p-purple: #EDE9FE; --p-purple-txt: #5B21B6;
+    --p-orange: #FFEDD5; --p-orange-txt: #9A3412;
+    --p-pink: #FCE7F3; --p-pink-txt: #831843;
+    --p-yellow: #FEF08A; --p-yellow-txt: #854D0E;
+    --p-teal: #CCFBF1; --p-teal-txt: #115E59;
+
     --seg-bg: #F1F5F9;
-    --seg-on: #FFFFFF;
   }
   
   [data-theme="dark"] {
+    /* Dark Pastel Theme */
     --bg: #0F172A;
-    --card: rgba(30, 41, 59, 0.75);
+    --card: rgba(30, 41, 59, 0.85);
     --card-solid: #1E293B;
     --card-soft: #334155;
     --ink: #F8FAFC;
     --muted: #94A3B8;
     --faint: #64748B;
     --line: #334155;
-    --shadow: 0 10px 40px -10px rgba(0,0,0,0.3);
-    
-    --green: #34D399; --green-soft: #064E3B;
-    --red: #FB7185; --red-soft: #4C0519;
-    --blue: #60A5FA; --blue-soft: #172554;
-    --violet: #A78BFA; --violet-soft: #2E1065;
-    --amber: #FBBF24; --amber-soft: #451A03;
-    
+    --shadow: 0 10px 40px -10px rgba(0,0,0,0.4);
+
+    /* Dark Pastel Colors */
+    --p-blue: #1E3A8A; --p-blue-txt: #BFDBFE;
+    --p-green: #064E3B; --p-green-txt: #A7F3D0;
+    --p-red: #4C0519; --p-red-txt: #FECDD3;
+    --p-purple: #2E1065; --p-purple-txt: #DDD6FE;
+    --p-orange: #431407; --p-orange-txt: #FED7AA;
+    --p-pink: #4C0519; --p-pink-txt: #FBCFE8;
+    --p-yellow: #422006; --p-yellow-txt: #FEF08A;
+    --p-teal: #042F2E; --p-teal-txt: #99F6E4;
+
     --seg-bg: #1E293B;
-    --seg-on: #334155;
   }
 
   * { box-sizing: border-box; }
@@ -76,16 +116,14 @@
   /* BACKGROUND ANIMATION */
   .bg-shape {
     position: fixed; border-radius: 50%; filter: blur(80px); z-index: -1;
-    animation: floatBg 20s infinite alternate ease-in-out; opacity: 0.6;
+    animation: floatBg 20s infinite alternate ease-in-out; opacity: 0.5;
     transition: background 0.5s;
   }
-  .shape1 { width: 40vw; height: 40vw; background: #A2D2FF; top: -10vh; left: -10vw; }
-  .shape2 { width: 45vw; height: 45vw; background: #FFD6A5; bottom: -15vh; right: -10vw; animation-delay: -5s; }
-  .shape3 { width: 35vw; height: 35vw; background: #CDB4DB; top: 40vh; left: 30vw; animation-delay: -10s; }
+  .shape1 { width: 40vw; height: 40vw; background: var(--p-blue); top: -10vh; left: -10vw; }
+  .shape2 { width: 45vw; height: 45vw; background: var(--p-pink); bottom: -15vh; right: -10vw; animation-delay: -5s; }
+  .shape3 { width: 35vw; height: 35vw; background: var(--p-purple); top: 40vh; left: 30vw; animation-delay: -10s; }
   
-  [data-theme="dark"] .shape1 { background: #1E3A8A; opacity: 0.4; }
-  [data-theme="dark"] .shape2 { background: #78350F; opacity: 0.4; }
-  [data-theme="dark"] .shape3 { background: #4C1D95; opacity: 0.4; }
+  [data-theme="dark"] .bg-shape { opacity: 0.2; }
 
   @keyframes floatBg {
     0% { transform: translate(0, 0) scale(1); }
@@ -109,27 +147,37 @@
   /* HEADER (APP) */
   header.top { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end; justify-content: space-between; margin-bottom: 24px; }
   .brand { display: flex; align-items: center; gap: 14px; }
-  .logo { width: 48px; height: 48px; border-radius: 14px; object-fit: contain; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-  .brand h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.03em; }
+  .logo { width: 48px; height: 48px; border-radius: 14px; object-fit: contain; }
+  .brand h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.03em; background: linear-gradient(135deg, var(--p-purple-txt), var(--p-blue-txt)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
   .brand p { margin: 2px 0 0; color: var(--muted); font-size: 13.5px; font-weight: 500; }
   
-  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--card); padding: 6px; border-radius: 16px; box-shadow: var(--shadow); backdrop-filter: blur(10px); }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--card); padding: 6px; border-radius: 16px; box-shadow: var(--shadow); backdrop-filter: blur(10px); border: 1px solid var(--line); }
   .controls input, .controls select { background: transparent; border: none; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--ink); padding: 8px 12px; outline: none; }
   .controls select option { background: var(--card-solid); color: var(--ink); }
-  .btn { border: 1px solid transparent; background: var(--card-soft); color: var(--ink); padding: 10px 18px; border-radius: 12px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; }
-  .btn:hover { background: var(--line); transform: translateY(-1px); }
-  .btn-primary { background: var(--green); color: #fff; }
-  .btn-primary:hover { background: #059669; }
+  
+  .btn { border: 1px solid transparent; padding: 10px 18px; border-radius: 12px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; }
+  .btn:hover { transform: translateY(-1px); filter: brightness(0.95); }
+  
+  .btn-blue { background: var(--p-blue); color: var(--p-blue-txt); }
+  .btn-green { background: var(--p-green); color: var(--p-green-txt); }
+  .btn-red { background: var(--p-red); color: var(--p-red-txt); }
+  .btn-purple { background: var(--p-purple); color: var(--p-purple-txt); }
+  .btn-orange { background: var(--p-orange); color: var(--p-orange-txt); }
+  .btn-amber { background: var(--p-yellow); color: var(--p-yellow-txt); }
 
   /* TABS */
-  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 24px; background: var(--seg-bg); padding: 6px; border-radius: 16px; width: fit-content; }
-  .tab { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13.5px; font-weight: 700; padding: 10px 20px; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
-  .tab:hover { color: var(--ink); }
-  .tab.active { background: var(--seg-on); color: var(--ink); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; padding: 6px; border-radius: 16px; width: fit-content; }
+  .tab { border: 1px solid transparent; background: transparent; color: var(--muted); font: inherit; font-size: 13.5px; font-weight: 700; padding: 10px 20px; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
+  .tab:hover { color: var(--ink); background: var(--card-soft); }
+  .tab.active[data-tab="dashboard"] { background: var(--p-blue); color: var(--p-blue-txt); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+  .tab.active[data-tab="transactions"] { background: var(--p-green); color: var(--p-green-txt); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+  .tab.active[data-tab="budgets"] { background: var(--p-orange); color: var(--p-orange-txt); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+  .tab.active[data-tab="debts"] { background: var(--p-red); color: var(--p-red-txt); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+  .tab.active[data-tab="goals"] { background: var(--p-purple); color: var(--p-purple-txt); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
 
   /* CARDS */
   .card { background: var(--card); backdrop-filter: blur(16px); border-radius: 20px; box-shadow: var(--shadow); padding: 24px; display: flex; flex-direction: column; transition: background 0.4s; border: 1px solid var(--line); }
-  .card h2 { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: -0.02em; }
+  .card h2 { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
   .card .sub { margin: 4px 0 0; font-size: 13px; color: var(--muted); font-weight: 500; }
   .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 
@@ -153,38 +201,26 @@
   .chart-wrap { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
   .chart-box { position: relative; width: 100%; height: 320px; }
   
-  /* LEGEND CUSTOM UNTUK DONUT */
-  .doughnut-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; margin-top: 24px; font-size: 12px; font-weight: 600; color: var(--muted); }
-  .legend-item { display: flex; align-items: center; gap: 8px; }
-  .legend-color { width: 12px; height: 12px; border-radius: 4px; flex-shrink: 0; }
-  .legend-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
   /* TABLES */
   .table-wrap { overflow-x: auto; border-radius: 16px; border: 1px solid var(--line); background: var(--card-solid); }
   table { width: 100%; border-collapse: collapse; min-width: 650px; }
-  th, td { text-align: left; padding: 16px 20px; font-size: 13.5px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th, td { text-align: left; padding: 16px 20px; font-size: 13.5px; border-bottom: 1px solid var(--line); vertical-align: middle; }
   thead th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 800; background: var(--card-soft); }
-  tbody td { font-variant-numeric: tabular-nums; }
-  tbody tr:last-child td { border-bottom: 0; }
-  tbody tr:hover { background: var(--card-soft); }
+  tbody tr { transition: background 0.2s; }
+  tbody tr:nth-child(even) { background: var(--card-soft); }
+  tbody tr:hover { background: var(--line); }
   td.num, th.num { text-align: right; }
 
   /* BADGES & TEXT */
   .badge { display: inline-block; padding: 6px 12px; border-radius: 12px; font-size: 11.5px; font-weight: 800; }
-  .bg-green { background: var(--green-soft); color: var(--green); }
-  .bg-red { background: var(--red-soft); color: var(--red); }
-  .bg-blue { background: var(--blue-soft); color: var(--blue); }
-  .bg-amber { background: var(--amber-soft); color: var(--amber); }
-  .bg-violet { background: var(--violet-soft); color: var(--violet); }
-  .bg-slate { background: var(--card-soft); color: var(--muted); }
-  .text-green { color: var(--green); font-weight: 800; }
-  .text-red { color: var(--red); font-weight: 800; }
+  .text-green { color: var(--p-green-txt); font-weight: 800; }
+  .text-red { color: var(--p-red-txt); font-weight: 800; }
 
   /* FORMS */
   .form-grid { display: grid; gap: 16px; }
   .field { display: flex; flex-direction: column; gap: 8px; font-size: 13px; font-weight: 700; color: var(--muted); }
   .field input, .field select { width: 100%; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; font-size: 14px; font-weight: 600; transition: all 0.2s; }
-  .field input:focus, .field select:focus { border-color: var(--green); background: var(--card-solid); box-shadow: 0 0 0 4px var(--green-soft); outline: none; }
+  .field input:focus, .field select:focus { border-color: var(--p-blue-txt); background: var(--card-solid); box-shadow: 0 0 0 4px var(--p-blue); outline: none; }
   .status { font-size: 13px; font-weight: 700; margin-top: 10px; min-height: 18px; }
   
   /* AUTH (LOGIN UI) */
@@ -192,19 +228,17 @@
   .auth-card { 
     max-width: 440px; width: 100%; padding: 40px; border-radius: 28px; 
     background: var(--card); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 30px 60px -15px rgba(0,0,0,0.1);
+    border: 1px solid var(--line); box-shadow: var(--shadow);
     text-align: center; position: relative; overflow: hidden;
   }
-  [data-theme="dark"] .auth-card { border-color: rgba(255,255,255,0.08); box-shadow: 0 30px 60px -15px rgba(0,0,0,0.4); }
   
   /* LOGO ANIMATION */
   .auth-logo {
     width: 90px; height: 90px; border-radius: 24px; object-fit: contain;
-    margin: 0 auto 24px auto; background: #fff; padding: 8px;
+    margin: 0 auto 24px auto; padding: 8px;
     animation: floatLogo 4s ease-in-out infinite;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
   }
-  [data-theme="dark"] .auth-logo { background: var(--card-soft); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+  [data-theme="dark"] .auth-logo { background: var(--card-soft); }
 
   @keyframes floatLogo {
     0%, 100% { transform: translateY(0); }
@@ -214,19 +248,17 @@
   .auth-card h2 { font-size: 24px; margin-bottom: 6px; color: var(--ink); }
   .auth-card p { font-size: 14px; color: var(--muted); margin-bottom: 30px; font-weight: 500; }
   .auth-card form { display: grid; gap: 20px; text-align: left; }
-  .auth-card .field input { background: rgba(255,255,255,0.5); border-color: transparent; }
-  .auth-card .field input:focus { background: rgba(255,255,255,0.9); border-color: var(--green); }
-  [data-theme="dark"] .auth-card .field input { background: rgba(0,0,0,0.2); }
-  [data-theme="dark"] .auth-card .field input:focus { background: rgba(0,0,0,0.4); border-color: var(--green); }
+  .auth-card .field input { background: var(--card-soft); border-color: transparent; }
+  .auth-card .field input:focus { background: var(--card-solid); border-color: var(--p-blue-txt); }
   
   .auth-submit {
     padding: 16px; font-size: 16px; border-radius: 16px; margin-top: 10px;
-    background: linear-gradient(135deg, #CDB4DB, #FFC8DD);
-    color: #1E293B; border: none; font-weight: 800; cursor: pointer;
-    box-shadow: 0 10px 20px -5px rgba(205, 180, 219, 0.4);
+    background: linear-gradient(135deg, var(--p-blue), var(--p-purple));
+    color: var(--ink); border: none; font-weight: 800; cursor: pointer;
+    box-shadow: 0 10px 20px -5px var(--p-blue);
     transition: all 0.3s;
   }
-  .auth-submit:hover { transform: translateY(-2px); box-shadow: 0 15px 25px -5px rgba(255, 200, 221, 0.5); }
+  .auth-submit:hover { transform: translateY(-2px); }
 
   .empty { padding: 40px; text-align: center; color: var(--muted); font-size: 14px; font-weight: 600; border-radius: 16px; border: 1px dashed var(--line); }
   .hidden { display: none !important; }
@@ -247,20 +279,17 @@
 </head>
 <body>
 
-<!-- ANIMATED BACKGROUND -->
 <div class="bg-shape shape1"></div>
 <div class="bg-shape shape2"></div>
 <div class="bg-shape shape3"></div>
 
-<!-- GLOBAL THEME TOGGLE -->
 <button class="global-theme-btn" id="globalThemeToggle" title="Ganti Tema">
   <svg id="globalThemeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
 </button>
 
-<!-- LOGIN VIEW -->
 <section id="authView" class="auth-container">
   <div class="auth-card">
-    <img src="logo.png" alt="Logo" class="auth-logo">
+    <img src="Logo.png" alt="Logo" class="auth-logo">
     <h2>Uang Harian</h2>
     <p>Sistem Keuangan Terpadu</p>
     
@@ -273,12 +302,11 @@
   </div>
 </section>
 
-<!-- APP VIEW -->
 <div id="appView" class="hidden">
   <div class="wrap">
     <header class="top">
       <div class="brand">
-        <img src="logo.png" alt="Logo" class="logo">
+        <img src="Logo.png" alt="Logo" class="logo">
         <div>
           <h1>Dashboard Finansial</h1>
           <p>Pantau arus kas secara real-time</p>
@@ -287,11 +315,11 @@
       <div class="controls">
         <select id="householdSelect" style="max-width: 140px;"></select>
         <input type="month" id="month" style="max-width: 140px;">
-        <button class="btn" id="logoutBtn">Keluar</button>
+        <button class="btn btn-red" id="logoutBtn">Keluar</button>
       </div>
     </header>
     
-    <div id="appNotice" class="card hidden" style="background:var(--red-soft); border-color:var(--red); color:var(--red); margin-bottom:20px;"></div>
+    <div id="appNotice" class="card hidden" style="background:var(--p-red); border-color:var(--p-red-txt); color:var(--p-red-txt); margin-bottom:20px;"></div>
 
     <div class="tabs">
       <button class="tab active" data-tab="dashboard">Dashboard</button>
@@ -307,8 +335,8 @@
         <article class="card kpi">
           <div class="kpi-top">
             <span class="kpi-label">Pemasukan</span>
-            <span class="kpi-icon" style="background:var(--green-soft)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
+            <span class="kpi-icon" style="background:var(--p-green)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--p-green-txt)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
             </span>
           </div>
           <div class="kpi-value text-green" id="mIncome">Rp0</div>
@@ -318,8 +346,8 @@
         <article class="card kpi">
           <div class="kpi-top">
             <span class="kpi-label">Pengeluaran</span>
-            <span class="kpi-icon" style="background:var(--red-soft)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l6 6 4-4 8 8"/><path d="M14 17h7v-7"/></svg>
+            <span class="kpi-icon" style="background:var(--p-red)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--p-red-txt)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l6 6 4-4 8 8"/><path d="M14 17h7v-7"/></svg>
             </span>
           </div>
           <div class="kpi-value text-red" id="mExpense">Rp0</div>
@@ -329,30 +357,30 @@
         <article class="card kpi">
           <div class="kpi-top">
             <span class="kpi-label">Total Saldo</span>
-            <span class="kpi-icon" style="background:var(--blue-soft)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="13" rx="3"/><path d="M2.5 10h19"/><path d="M16 15h2"/></svg>
+            <span class="kpi-icon" style="background:var(--p-blue)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--p-blue-txt)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="13" rx="3"/><path d="M2.5 10h19"/><path d="M16 15h2"/></svg>
             </span>
           </div>
-          <div class="kpi-value" id="mBalance">Rp0</div>
+          <div class="kpi-value" style="color:var(--p-blue-txt)" id="mBalance">Rp0</div>
           <div class="kpi-foot"><span class="kpi-note" id="mBalanceHint">Saldo Awal: Rp0</span></div>
         </article>
 
         <article class="card kpi">
           <div class="kpi-top">
             <span class="kpi-label">Saving Rate</span>
-            <span class="kpi-icon" style="background:var(--violet-soft)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="var(--violet)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5L5 19"/><circle cx="7" cy="7" r="2.6"/><circle cx="17" cy="17" r="2.6"/></svg>
+            <span class="kpi-icon" style="background:var(--p-purple)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--p-purple-txt)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5L5 19"/><circle cx="7" cy="7" r="2.6"/><circle cx="17" cy="17" r="2.6"/></svg>
             </span>
           </div>
-          <div class="kpi-value" id="mSavingRate">0%</div>
+          <div class="kpi-value" style="color:var(--p-purple-txt)" id="mSavingRate">0%</div>
           <div class="kpi-foot"><span class="kpi-note">Rasio tabungan bulan ini</span></div>
         </article>
 
         <article class="card kpi">
           <div class="kpi-top">
             <span class="kpi-label">Pemasukan Tahun Ini</span>
-            <span class="kpi-icon" style="background:var(--green-soft)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <span class="kpi-icon" style="background:var(--p-green)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--p-green-txt)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
             </span>
           </div>
           <div class="kpi-value text-green" id="yIncome">Rp0</div>
@@ -362,8 +390,8 @@
         <article class="card kpi">
           <div class="kpi-top">
             <span class="kpi-label">Pengeluaran Tahun Ini</span>
-            <span class="kpi-icon" style="background:var(--red-soft)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <span class="kpi-icon" style="background:var(--p-red)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--p-red-txt)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
             </span>
           </div>
           <div class="kpi-value text-red" id="yExpense">Rp0</div>
@@ -393,7 +421,7 @@
           </div>
           <div class="chart-wrap">
             <div style="position: relative; height: 220px; width: 100%; margin-top: 14px;"><canvas id="doughnutChart"></canvas></div>
-            <div id="doughnutLegend" class="doughnut-legend"></div>
+            <div id="doughnutLegend" style="display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; margin-top:20px; font-size:12px; font-weight:600; color:var(--muted);"></div>
           </div>
         </section>
       </div>
@@ -426,7 +454,7 @@
     <!-- TRANSACTIONS -->
     <section id="transactionsTab" class="hidden">
       <div class="grid-table">
-        <div class="card" style="border-top: 4px solid var(--green);">
+        <div class="card" style="border-top: 4px solid var(--p-green-txt);">
           <h2 style="margin-bottom: 20px;">Tambah / Edit Transaksi</h2>
           <form id="txForm" class="form-grid">
             <label class="field">Jenis<select id="txType"><option value="expense">Pengeluaran</option><option value="income">Pemasukan</option></select></label>
@@ -437,8 +465,8 @@
             <label class="field">Anggota<select id="txMember"></select></label>
             
             <div style="display:flex; gap:12px; margin-top:12px;">
-              <button type="submit" class="btn btn-primary" id="btnSubmitTx" style="padding: 14px 28px; font-size: 14px;">Simpan Transaksi</button>
-              <button type="button" class="btn" id="btnCancelEdit" style="display:none; padding: 14px 28px; font-size: 14px;" onclick="cancelEdit()">Batal Edit</button>
+              <button type="submit" class="btn btn-green" id="btnSubmitTx" style="padding: 14px 28px; font-size: 14px;">Simpan Transaksi</button>
+              <button type="button" class="btn" id="btnCancelEdit" style="display:none; padding: 14px 28px; font-size: 14px; background:var(--card-soft);" onclick="cancelEdit()">Batal Edit</button>
             </div>
             <div id="txStatus" class="status"></div>
           </form>
@@ -447,7 +475,7 @@
         <div class="card">
           <div class="card-head">
             <h2>Riwayat Transaksi</h2>
-            <select id="txFilter" class="btn" style="padding:10px 16px; border-radius: 12px;"><option value="all">Semua Jenis</option><option value="income">Masuk</option><option value="expense">Keluar</option></select>
+            <select id="txFilter" class="btn btn-blue" style="padding:10px 16px; border-radius: 12px;"><option value="all">Semua Jenis</option><option value="income">Masuk</option><option value="expense">Keluar</option></select>
           </div>
           <div class="table-wrap">
             <table>
@@ -473,7 +501,7 @@
           <form id="budgetForm" class="form-grid" style="margin-top:24px;">
             <label class="field">Kategori<select id="budgetCategory"><option>Bahan Masakan</option><option>Jajan Anak</option><option>Kebutuhan Anak</option><option>Perlengkapan Kebersihan</option><option>Tagihan</option><option>Transport</option><option>Hiburan/Jajan</option><option>Sosial/Donasi</option><option>Investasi</option><option>Lifestyle</option><option>Aset</option><option>Maintenance</option><option>Kesehatan</option><option>Tabungan Nuha</option><option>Lainnya</option></select></label>
             <label class="field">Batas (Rp)<input id="budgetAmount" type="number" min="1" required></label>
-            <button type="submit" class="btn btn-primary" style="margin-top:12px; padding: 14px;">Simpan Anggaran</button>
+            <button type="submit" class="btn btn-purple" style="margin-top:12px; padding: 14px;">Simpan Anggaran</button>
             <div id="budgetStatus" class="status"></div>
           </form>
         </div>
@@ -496,8 +524,8 @@
             <label class="field">Keterangan Awal<input id="debtNote"></label>
             
             <div style="display:flex; gap:12px; margin-top:12px;">
-              <button type="submit" class="btn btn-primary" id="btnSubmitDebt">Simpan Catatan</button>
-              <button type="button" class="btn" id="btnCancelDebt" style="display:none;" onclick="cancelDebtEdit()">Batal Edit</button>
+              <button type="submit" class="btn btn-blue" id="btnSubmitDebt">Simpan Catatan</button>
+              <button type="button" class="btn" id="btnCancelDebt" style="display:none; background:var(--card-soft);" onclick="cancelDebtEdit()">Batal Edit</button>
             </div>
             <div id="debtStatus" class="status"></div>
           </form>
@@ -505,7 +533,7 @@
       </div>
 
       <div class="grid-table">
-        <div class="card">
+        <div class="card" style="border-top: 4px solid var(--p-red-txt);">
           <h2>Daftar Utang (Yang Harus Dibayar)</h2>
           <div class="table-wrap">
             <table>
@@ -516,7 +544,7 @@
           </div>
         </div>
 
-        <div class="card">
+        <div class="card" style="border-top: 4px solid var(--p-green-txt);">
           <h2>Daftar Piutang (Yang Harus Ditagih)</h2>
           <div class="table-wrap">
             <table>
@@ -532,7 +560,7 @@
     <!-- GOALS -->
     <section id="goalsTab" class="hidden">
       <div class="grid-main" style="margin-bottom:24px;">
-        <div class="card" style="border-top: 4px solid var(--blue);">
+        <div class="card" style="border-top: 4px solid var(--p-purple-txt);">
           <h2>Form Target Tabungan</h2>
           <form id="goalForm" class="form-grid" style="margin-top:20px;">
             <input type="hidden" id="goalId" value="">
@@ -544,8 +572,8 @@
             <label class="field">Dana Awal Terkumpul (Rp)<input id="goalSaved" type="number" min="0" value="0" required></label>
             
             <div style="display:flex; gap:12px; margin-top:12px;">
-              <button type="submit" class="btn btn-primary" id="btnSubmitGoal">Simpan Target</button>
-              <button type="button" class="btn" id="btnCancelGoal" style="display:none;" onclick="cancelGoalEdit()">Batal Edit</button>
+              <button type="submit" class="btn btn-purple" id="btnSubmitGoal">Simpan Target</button>
+              <button type="button" class="btn" id="btnCancelGoal" style="display:none; background:var(--card-soft);" onclick="cancelGoalEdit()">Batal Edit</button>
             </div>
             <div id="goalStatus" class="status"></div>
           </form>
@@ -595,25 +623,44 @@ function toggleTheme() {
 themeToggle.onclick = toggleTheme;
 updateThemeIcon(document.documentElement.getAttribute('data-theme'));
 
-const CAT_PALETTE = ['#F43F5E','#F59E0B','#10B981','#3B82F6','#8B5CF6','#EC4899','#14B8A6','#F97316','#06B6D4','#8B5CF6','#D946EF','#F43F5E'];
 function getCategoryColor(catName) {
   let c = catName.toLowerCase();
-  if(c.includes('gaji')) return '#3B82F6';
-  if(c.includes('bahan')) return '#F59E0B';
-  if(c.includes('jajan')) return '#8B5CF6';
-  if(c.includes('kebutuhan')) return '#F43F5E';
-  if(c.includes('kebersihan')) return '#10B981';
-  if(c.includes('tagihan')) return '#06B6D4';
-  if(c.includes('transport')) return '#F97316';
-  if(c.includes('hiburan')) return '#EC4899';
-  if(c.includes('sosial')) return '#FBBF24';
-  if(c.includes('investasi')) return '#14B8A6';
-  if(c.includes('lifestyle')) return '#FDE047';
-  if(c.includes('aset')) return '#A78BFA';
-  if(c.includes('maintenance')) return '#94A3B8';
-  if(c.includes('kesehatan')) return '#D6D3D1';
-  if(c.includes('tabungan')) return '#E879F9';
-  return '#A1A1AA';
+  if(c.includes('gaji')) return 'var(--p-blue-txt)';
+  if(c.includes('bahan')) return 'var(--p-orange-txt)';
+  if(c.includes('jajan')) return 'var(--p-purple-txt)';
+  if(c.includes('kebutuhan')) return 'var(--p-red-txt)';
+  if(c.includes('kebersihan')) return 'var(--p-green-txt)';
+  if(c.includes('tagihan')) return 'var(--p-teal-txt)';
+  if(c.includes('transport')) return 'var(--p-orange-txt)';
+  if(c.includes('hiburan')) return 'var(--p-pink-txt)';
+  if(c.includes('sosial')) return 'var(--p-yellow-txt)';
+  if(c.includes('investasi')) return 'var(--p-teal-txt)';
+  if(c.includes('lifestyle')) return 'var(--p-yellow-txt)';
+  if(c.includes('aset')) return 'var(--p-purple-txt)';
+  if(c.includes('maintenance')) return 'var(--muted)';
+  if(c.includes('kesehatan')) return 'var(--faint)';
+  if(c.includes('tabungan')) return 'var(--p-purple-txt)';
+  return 'var(--muted)';
+}
+
+function getCategoryBg(catName) {
+  let c = catName.toLowerCase();
+  if(c.includes('gaji')) return 'var(--p-blue)';
+  if(c.includes('bahan')) return 'var(--p-orange)';
+  if(c.includes('jajan')) return 'var(--p-purple)';
+  if(c.includes('kebutuhan')) return 'var(--p-red)';
+  if(c.includes('kebersihan')) return 'var(--p-green)';
+  if(c.includes('tagihan')) return 'var(--p-teal)';
+  if(c.includes('transport')) return 'var(--p-orange)';
+  if(c.includes('hiburan')) return 'var(--p-pink)';
+  if(c.includes('sosial')) return 'var(--p-yellow)';
+  if(c.includes('investasi')) return 'var(--p-teal)';
+  if(c.includes('lifestyle')) return 'var(--p-yellow)';
+  if(c.includes('aset')) return 'var(--p-purple)';
+  if(c.includes('maintenance')) return 'var(--card-soft)';
+  if(c.includes('kesehatan')) return 'var(--card-soft)';
+  if(c.includes('tabungan')) return 'var(--p-purple)';
+  return 'var(--card-soft)';
 }
 
 const DEFAULT_BUDGETS = {
@@ -634,13 +681,14 @@ $('budgetCategory').addEventListener('change', (e) => {
 $('budgetCategory').dispatchEvent(new Event('change'));
 
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function status(id,msg,bad=false){$(id).textContent=msg;$(id).style.color=bad?'var(--red)':'var(--green)'; setTimeout(()=>{if($(id).textContent===msg)$(id).textContent=''}, 4000);}
+function status(id,msg,bad=false){$(id).textContent=msg;$(id).style.color=bad?'var(--p-red-txt)':'var(--p-green-txt)'; setTimeout(()=>{if($(id).textContent===msg)$(id).textContent=''}, 4000);}
 function authUI(){ $('authView').classList.remove('hidden');$('appView').classList.add('hidden') }
 function appUI(){ $('authView').classList.add('hidden');$('appView').classList.remove('hidden') }
 
 function getCategoryBadge(cat) {
   let color = getCategoryColor(cat);
-  return `<span class="badge" style="background:${color}20; color:${color};">${esc(cat)}</span>`;
+  let bg = getCategoryBg(cat);
+  return `<span class="badge" style="background:${bg}; color:${color};">${esc(cat)}</span>`;
 }
 
 $('authForm').onsubmit=async e=>{
@@ -776,8 +824,8 @@ function renderDashboard(){
   chartLine = new Chart($('lineChart'), { 
     type: 'line', 
     data: { labels: daysData, datasets: [
-      { label: 'Masuk', data: inData, borderColor: '#10B981', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0 }, 
-      { label: 'Keluar', data: outData, borderColor: '#F43F5E', backgroundColor: 'rgba(244, 63, 94, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0 }
+      { label: 'Masuk', data: inData, borderColor: '#34D399', backgroundColor: 'rgba(52, 211, 153, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0 }, 
+      { label: 'Keluar', data: outData, borderColor: '#FB7185', backgroundColor: 'rgba(251, 113, 133, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0 }
     ] }, 
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', align: 'end', labels: { color: textColor, usePointStyle: true, boxWidth: 8, font: {family: 'Plus Jakarta Sans', size: 12, weight: 600} } }, tooltip: { backgroundColor: isDark ? '#1E293B' : '#fff', titleColor: isDark ? '#fff' : '#1E293B', bodyColor: textColor, borderColor: gridColor, borderWidth: 1, padding: 12, cornerRadius: 8 } }, scales: { x: { grid: { display: false, drawBorder: false }, ticks: { color: textColor, maxTicksLimit: 8, font: {weight: 600} } }, y: { grid: { color: gridColor, drawBorder: false }, ticks: { color: textColor, callback: v => 'Rp' + (v/1000) + 'k', font: {weight: 600} } } } } 
   });
@@ -786,12 +834,12 @@ function renderDashboard(){
   let sortedCats = Object.entries(cats).sort((a,b)=>b[1]-a[1]); 
   let catLabels = sortedCats.map(x=>x[0]); 
   let catData = sortedCats.map(x=>x[1]); 
-  let catColors = catLabels.map(c => getCategoryColor(c));
+  let catColors = catLabels.map(c => getCategoryBg(c));
   
   if(chartDoughnut) chartDoughnut.destroy(); 
   chartDoughnut = new Chart($('doughnutChart'), { 
     type: 'doughnut', 
-    data: { labels: catLabels.length ? catLabels : ['Belum Ada'], datasets: [{ data: catData.length ? catData : [1], backgroundColor: catLabels.length ? catColors : ['#A1A1AA'], borderWidth: 0, hoverOffset: 4 }] }, 
+    data: { labels: catLabels.length ? catLabels : ['Belum Ada'], datasets: [{ data: catData.length ? catData : [1], backgroundColor: catColors, borderWidth: 0, hoverOffset: 4 }] }, 
     options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } } 
   });
 
@@ -818,13 +866,13 @@ function renderDashboard(){
           const chart = context.chart;
           const {ctx, chartArea} = chart;
           if (!chartArea) return null;
-          const color = getCategoryColor(catLabels[context.dataIndex]);
+          const color = getCategoryBg(catLabels[context.dataIndex]);
           const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
           gradient.addColorStop(0, color);
           gradient.addColorStop(1, color + 'B3');
           return gradient;
         },
-        borderColor: (context) => getCategoryColor(catLabels[context.dataIndex]),
+        borderColor: (context) => getCategoryBg(catLabels[context.dataIndex]),
         borderWidth: { bottom: 4 },
         borderRadius: 8, 
         borderSkipped: false 
@@ -853,14 +901,15 @@ function renderDashboard(){
     let s = spent[b.category] || 0;
     let limit = Number(b.limit_amount);
     let p = Math.min(100, (s / limit) * 100);
-    let color = getCategoryColor(b.category);
+    let bg = getCategoryBg(b.category);
+    let txt = getCategoryColor(b.category);
     let isOver = s > limit;
     
     budgetHtml += `
       <div style="margin-bottom:20px;">
         <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px; font-weight:700;">
           <span style="display:flex; align-items:center; gap:8px;">
-            <span style="width:10px; height:10px; border-radius:50%; background:${color};"></span>
+            <span style="width:10px; height:10px; border-radius:50%; background:${txt};"></span>
             ${esc(b.category)}
           </span>
           <span style="font-variant-numeric:tabular-nums;">
@@ -868,10 +917,10 @@ function renderDashboard(){
           </span>
         </div>
         <div style="height:8px; background:var(--card-soft); border-radius:6px; overflow:hidden; position:relative;">
-          <div style="height:100%; width:${p}%; background:${isOver?'var(--red)':color}; border-radius:6px; transition:width 0.5s;"></div>
+          <div style="height:100%; width:${p}%; background:${bg}; border-radius:6px; transition:width 0.5s;"></div>
         </div>
         <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:12px; font-weight:600; color:var(--muted);">
-          <span>${isOver ? '<span style="color:var(--red)">Melebihi anggaran</span>' : 'Aman'}</span>
+          <span>${isOver ? '<span style="color:var(--p-red-txt)">Melebihi anggaran</span>' : 'Aman'}</span>
           <span>${Math.round(p)}% terpakai</span>
         </div>
       </div>
@@ -892,8 +941,8 @@ function txRow(t){
     <td><span class="badge ${t.type==='income'?'bg-green':'bg-red'}">${t.type==='income'?'Masuk':'Keluar'}</span></td>
     <td class="num ${t.type==='income'?'text-green':'text-red'}">${money(t.amount)}</td>
     <td class="num" style="white-space:nowrap;">
-      <button class="btn" style="padding:8px 12px; font-size:12px; margin-right:6px; border-radius:8px;" onclick="editTx('${t.id}')">Edit</button>
-      <button class="btn" style="padding:8px 12px; font-size:12px; color:var(--red); border-radius:8px; background:var(--red-soft);" onclick="deleteTx('${t.id}')">Hapus</button>
+      <button class="btn btn-amber" style="padding:8px 12px; font-size:12px; margin-right:6px; border-radius:8px;" onclick="editTx('${t.id}')">Edit</button>
+      <button class="btn btn-red" style="padding:8px 12px; font-size:12px; border-radius:8px;" onclick="deleteTx('${t.id}')">Hapus</button>
     </td>
   </tr>`;
 }
@@ -945,18 +994,19 @@ function renderBudgets(){
   let spent={};transactions.filter(t=>t.type==='expense').forEach(t=>spent[t.category]=(spent[t.category]||0)+Number(t.amount)); 
   $('budgetList').innerHTML=budgets.length?budgets.map(b=>{ 
     let s=spent[b.category]||0,p=Math.min(100,s/Number(b.limit_amount)*100),isOver=p>=100; 
-    let color = getCategoryColor(b.category);
+    let bg = getCategoryBg(b.category);
+    let txt = getCategoryColor(b.category);
     return `<div style="margin-bottom:24px;">
       <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:14px; align-items:center;">
         <b>${getCategoryBadge(b.category)}</b>
         <span style="color:var(--muted); font-weight:700;">${money(s)} / ${money(b.limit_amount)}</span>
       </div>
       <div style="height:10px; background:var(--card-soft); border-radius:6px; overflow:hidden;">
-        <div style="height:100%; width:${p}%; background:${isOver?'var(--red)':color}; border-radius:6px; transition:width 0.5s;"></div>
+        <div style="height:100%; width:${p}%; background:${bg}; border-radius:6px; transition:width 0.5s;"></div>
       </div>
       <div style="display:flex; justify-content:space-between; margin-top:10px; font-size:12px; color:var(--muted); font-weight:600;">
-        <span>${isOver?'Melebihi batas!':Math.round(p)+'% terpakai'}</span>
-        <button class="btn" style="padding:6px 12px; font-size:11px; border-radius:8px;" onclick="removeBudget('${b.id}')">Hapus</button>
+        <span>${isOver?'<span style="color:var(--p-red-txt)">Melebihi batas!</span>':Math.round(p)+'% terpakai'}</span>
+        <button class="btn btn-red" style="padding:6px 12px; font-size:11px; border-radius:8px;" onclick="removeBudget('${b.id}')">Hapus</button>
       </div>
     </div>` 
   }).join(''):'<div class="empty">Belum ada anggaran.</div>' 
@@ -992,14 +1042,14 @@ function renderDebts(){
       </td>
       <td style="width:120px;">
         <div style="height:6px; background:var(--card-soft); border-radius:4px; overflow:hidden;">
-          <div style="height:100%; width:${pct}%; background:var(--green); border-radius:4px;"></div>
+          <div style="height:100%; width:${pct}%; background:${isDone?'var(--p-green-txt)':'var(--p-blue-txt)'}; border-radius:4px;"></div>
         </div>
         <div style="font-size:11px; color:var(--muted); text-align:right; margin-top:4px; font-weight:600;">${Math.round(pct)}%</div>
       </td>
       <td class="num" style="white-space:nowrap;">
-        ${!isDone ? `<button class="btn" style="padding:6px 12px; font-size:11px; margin-right:4px; background:var(--blue-soft); color:var(--blue); border-radius:8px;" onclick="payDebt('${d.id}')">Cicil</button>` : ''}
-        <button class="btn" style="padding:6px 12px; font-size:11px; margin-right:4px; border-radius:8px;" onclick="editDebt('${d.id}')">Edit</button>
-        <button class="btn" style="padding:6px 12px; font-size:11px; color:var(--red); background:var(--red-soft); border-radius:8px;" onclick="deleteDebt('${d.id}')">Hapus</button>
+        ${!isDone ? `<button class="btn btn-blue" style="padding:6px 12px; font-size:11px; margin-right:4px; border-radius:8px;" onclick="payDebt('${d.id}')">Cicil</button>` : ''}
+        <button class="btn btn-amber" style="padding:6px 12px; font-size:11px; margin-right:4px; border-radius:8px;" onclick="editDebt('${d.id}')">Edit</button>
+        <button class="btn btn-red" style="padding:6px 12px; font-size:11px; border-radius:8px;" onclick="deleteDebt('${d.id}')">Hapus</button>
       </td>
     </tr>`;
   }
@@ -1102,20 +1152,20 @@ function renderGoals(){
     return `<div style="padding:24px; border:1px solid var(--line); border-radius:20px; background:var(--card-soft);">
       <div style="display:flex; justify-content:space-between; margin-bottom:12px; font-size:16px;">
         <b>${esc(g.name)}</b>
-        <span style="color:${isDone?'var(--green)':'var(--muted)'}; font-weight:800;">${Math.round(p)}%</span>
+        <span style="color:${isDone?'var(--p-green-txt)':'var(--muted)'}; font-weight:800;">${Math.round(p)}%</span>
       </div>
       <div style="height:12px; background:var(--card); border-radius:8px; overflow:hidden; margin-bottom:12px;">
-        <div style="height:100%; width:${p}%; background:${isDone?'var(--green)':'var(--blue)'}; border-radius:8px;"></div>
+        <div style="height:100%; width:${p}%; background:${isDone?'var(--p-green-txt)':'var(--p-blue-txt)'}; border-radius:8px;"></div>
       </div>
       <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--muted); font-weight:600; margin-bottom:16px;">
         <span>Terkumpul: <b style="color:var(--ink);">${money(saved)}</b></span>
         <span>Target: ${money(target)}</span>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
-        <button class="btn" style="padding:8px 12px; font-size:12px; background:var(--green-soft); color:var(--green); border-radius:8px;" onclick="addSaving('${g.id}')">Tambah Dana</button>
-        <button class="btn" style="padding:8px 12px; font-size:12px; background:var(--amber-soft); color:var(--amber); border-radius:8px;" onclick="withdrawSaving('${g.id}')">Tarik Dana</button>
-        <button class="btn" style="padding:8px 12px; font-size:12px; border-radius:8px;" onclick="editGoal('${g.id}')">Edit</button>
-        <button class="btn" style="padding:8px 12px; font-size:12px; color:var(--red); background:var(--red-soft); border-radius:8px;" onclick="deleteGoal('${g.id}')">Hapus</button>
+        <button class="btn btn-green" style="padding:8px 12px; font-size:12px; border-radius:8px;" onclick="addSaving('${g.id}')">Tambah Dana</button>
+        <button class="btn btn-amber" style="padding:8px 12px; font-size:12px; border-radius:8px;" onclick="withdrawSaving('${g.id}')">Tarik Dana</button>
+        <button class="btn btn-blue" style="padding:8px 12px; font-size:12px; border-radius:8px;" onclick="editGoal('${g.id}')">Edit</button>
+        <button class="btn btn-red" style="padding:8px 12px; font-size:12px; border-radius:8px;" onclick="deleteGoal('${g.id}')">Hapus</button>
       </div>
     </div>`;
   }).join('') : '<div class="empty">Belum ada target tabungan.</div>';
