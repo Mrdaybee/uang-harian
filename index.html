@@ -567,33 +567,43 @@ function updateUIMode() {
   // Update tombol Login/Logout
   const btn = $('logoutBtn');
   if (isGuest) {
-    // Tampilan Tombol Login (Warna Ungu agar kontras di dark mode)
     btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg><span>Login</span>`;
     btn.style.background = 'var(--p-purple)';
     btn.style.color = 'var(--p-purple-txt)';
     $('guestNotice').classList.remove('hidden');
-    $('householdSelect').style.display = 'none'; // Sembunyikan dropdown
+    $('householdSelect').style.display = 'none';
   } else {
-    // Tampilan Tombol Logout
     btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span>Keluar</span>`;
     btn.style.background = 'var(--p-red)';
     btn.style.color = 'var(--p-red-txt)';
     $('guestNotice').classList.add('hidden');
-    $('householdSelect').style.display = ''; // Tampilkan dropdown
+    if(households.length > 1) $('householdSelect').style.display = '';
   }
 
-  // Sembunyikan/Tampilkan fitur Admin
   document.querySelectorAll('.admin-only').forEach(el => {
     el.style.display = isGuest ? 'none' : '';
   });
   
-  // Sembunyikan form edit (jika ada container form)
   if(isGuest) {
     $('txForm').closest('.card').style.display = 'none';
   } else {
     $('txForm').closest('.card').style.display = '';
   }
 }
+
+// --- INI YANG HILANG SEBELUMNYA (EVENT LISTENER) ---
+$('month').onchange = loadData;
+$('householdSelect').onchange = async () => { currentHouse = $('householdSelect').value; await loadData(); };
+
+document.querySelectorAll('[data-tab]').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('[data-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === b.dataset.tab));
+    ['dashboard','transactions','budgets','debts','goals'].forEach(t => {
+      document.getElementById(t + 'Tab').classList.toggle('hidden', t !== b.dataset.tab);
+    });
+  };
+});
+// ----------------------------------------------------
 
 $('authForm').onsubmit=async e=>{
   e.preventDefault();
@@ -630,7 +640,6 @@ async function startApp(){
         await loadHouseholds();
       }
     } else {
-      // Mode Guest: Gunakan rumah utama
       currentHouse = MAIN_HOUSEHOLD_ID;
     }
     await loadData();
