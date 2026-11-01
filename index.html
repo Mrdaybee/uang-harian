@@ -471,7 +471,7 @@ themeToggle.onclick = toggleTheme;
 updateThemeIcon(document.documentElement.getAttribute('data-theme'));
 
 function getCategoryColor(catName) {
-  let c = catName.toLowerCase();
+  let c = String(catName || '').toLowerCase();
   if(c.includes('gaji')) return '#1E40AF'; if(c.includes('bahan')) return '#C2410C'; if(c.includes('jajan')) return '#6D28D9';
   if(c.includes('kebutuhan')) return '#BE123C'; if(c.includes('kebersihan')) return '#047857'; if(c.includes('tagihan')) return '#0F766E';
   if(c.includes('transport')) return '#C2410C'; if(c.includes('hiburan')) return '#BE185D'; if(c.includes('sosial')) return '#854D0E';
@@ -480,7 +480,7 @@ function getCategoryColor(catName) {
   return '#475569';
 }
 function getCategoryBg(catName) {
-  let c = catName.toLowerCase();
+  let c = String(catName || '').toLowerCase();
   if(c.includes('gaji')) return '#93C5FD'; if(c.includes('bahan')) return '#FDBA74'; if(c.includes('jajan')) return '#C4B5FD';
   if(c.includes('kebutuhan')) return '#FDA4AF'; if(c.includes('kebersihan')) return '#6EE7B7'; if(c.includes('tagihan')) return '#5EEAD4';
   if(c.includes('transport')) return '#FDBA74'; if(c.includes('hiburan')) return '#F9A8D4'; if(c.includes('sosial')) return '#FDE047';
@@ -699,13 +699,14 @@ function renderDashboard(){
   catLabels.forEach((c, i) => { legendHtml += `<div class="legend-item"><span class="legend-color" style="background:${catColors[i]};"></span><span class="legend-text">${esc(c)}</span></div>`; });
   $('doughnutLegend').innerHTML = legendHtml;
 
+  // PERBAIKAN BUG CHART BAR: Jangan pakai gradient rumit & pastikan tidak crash jika kosong
   if(chartBar) { chartBar.destroy(); chartBar = null; }
-  chartBar = new Chart($('barChart'), { type: 'bar', data: { labels: catLabels, datasets: [{ label: 'Pengeluaran', data: catData, backgroundColor: (context) => {
-          const chart = context.chart; const {ctx, chartArea} = chart; if (!chartArea) return null;
-          const color = getCategoryBg(catLabels[context.dataIndex]);
-          const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
-          gradient.addColorStop(0, color); gradient.addColorStop(1, color); return gradient;
-        }, borderColor: (context) => getCategoryBg(catLabels[context.dataIndex]), borderWidth: { bottom: 4 }, borderRadius: 8, borderSkipped: false }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: isDark ? '#1E293B' : '#fff', titleColor: isDark ? '#fff' : '#1E293B', bodyColor: textColor, borderColor: gridColor, borderWidth: 1, padding: 12, cornerRadius: 8 } }, scales: { x: { grid: { display: false, drawBorder: false }, ticks: { color: textColor, font: {size: 11, weight: 600} } }, y: { grid: { color: gridColor, drawBorder: false }, ticks: { color: textColor, callback: v => 'Rp' + (v/1000) + 'k', font: {weight: 600} } } } } });
+  if(catLabels.length > 0) {
+    chartBar = new Chart($('barChart'), { type: 'bar', data: { labels: catLabels, datasets: [{ label: 'Pengeluaran', data: catData, backgroundColor: catColors, borderRadius: 8, borderSkipped: false }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: isDark ? '#1E293B' : '#fff', titleColor: isDark ? '#fff' : '#1E293B', bodyColor: textColor, borderColor: gridColor, borderWidth: 1, padding: 12, cornerRadius: 8 } }, scales: { x: { grid: { display: false, drawBorder: false }, ticks: { color: textColor, font: {size: 11, weight: 600} } }, y: { grid: { color: gridColor, drawBorder: false }, ticks: { color: textColor, callback: v => 'Rp' + (v/1000) + 'k', font: {weight: 600} } } } } });
+  } else {
+    const ctx = $('barChart').getContext('2d');
+    ctx.clearRect(0, 0, $('barChart').width, $('barChart').height);
+  }
 
   let spent = {}; out.forEach(t => spent[t.category] = (spent[t.category]||0) + Number(t.amount));
   let budgetHtml = ''; let hasBudget = false;
