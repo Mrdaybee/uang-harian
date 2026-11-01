@@ -185,6 +185,36 @@
   .empty { padding: 40px; text-align: center; color: var(--muted); font-size: 14px; font-weight: 600; border-radius: 16px; border: 1px dashed var(--line); }
   .hidden { display: none !important; }
 
+  /* NOTICE BANNER UNTUK GUEST */
+  #guestNotice {
+    background: var(--p-yellow);
+    color: var(--p-yellow-txt);
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size: 13.5px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid var(--p-yellow-txt);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  }
+  #guestNotice button {
+    background: var(--p-yellow-txt);
+    color: #fff;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    font-family: inherit;
+    transition: all 0.2s;
+  }
+  #guestNotice button:hover { background: #000; }
+
   @media (max-width: 980px) { .grid-main, .grid-bottom { grid-template-columns: 1fr; } .chart-box { height: 300px; } }
   @media (max-width: 520px) {
     .wrap { padding: 16px 12px 32px; } .kpis { grid-template-columns: 1fr; } .card { padding: 20px; }
@@ -203,21 +233,23 @@
   <svg id="globalThemeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
 </button>
 
-<section id="authView" class="auth-container">
-  <div class="auth-card">
+<!-- LOGIN MODAL (Disembunyikan by default) -->
+<section id="authView" class="auth-container hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);">
+  <div class="auth-card" style="background: var(--card-solid);">
     <img src="Logo.png" alt="Logo" class="auth-logo">
     <h2>Uang Harian</h2>
-    <p>Sistem Keuangan Terpadu</p>
+    <p>Masuk untuk mengedit data</p>
     <form id="authForm">
       <label class="field">Username<input id="authUsername" type="text" required placeholder="admin"></label>
       <label class="field">PIN (6 Angka)<input id="authPin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required placeholder="••••••" style="letter-spacing: 8px; text-align: center; font-size: 18px;"></label>
       <button type="submit" class="auth-submit" id="authSubmit">Masuk ke Dashboard</button>
+      <button type="button" class="btn btn-red" onclick="closeAuthModal()" style="padding: 14px; margin-top: 4px;">Batal</button>
     </form>
     <div class="status" id="authStatus"></div>
   </div>
 </section>
 
-<div id="appView" class="hidden">
+<div id="appView">
   <div class="wrap">
     <header class="top">
       <div class="brand">
@@ -233,12 +265,15 @@
           <input type="month" id="month" aria-label="Pilih bulan">
           <svg class="month-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </div>
-        <button class="btn-logout" id="logoutBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          <span>Keluar</span>
-        </button>
+        <button class="btn-logout" id="logoutBtn" onclick="handleAuthAction()">Login</button>
       </div>
     </header>
+
+    <!-- BANNER GUEST -->
+    <div id="guestNotice" class="hidden">
+      <span>Anda sedang dalam mode Lihat Saja. Silakan login untuk menambah atau mengedit data.</span>
+      <button onclick="openAuthModal()">Login Sekarang</button>
+    </div>
     
     <div id="appNotice" class="card hidden" style="background:var(--p-red); border-color:var(--p-red-txt); color:var(--p-red-txt); margin-bottom:20px;"></div>
 
@@ -306,7 +341,7 @@
 
     <section id="transactionsTab" class="hidden">
       <div class="grid-table">
-        <div class="card" style="border-top: 4px solid var(--p-green-txt);">
+        <div class="card admin-only" style="border-top: 4px solid var(--p-green-txt);">
           <h2 style="margin-bottom: 20px;">Tambah / Edit Transaksi</h2>
           <form id="txForm" class="form-grid">
             <label class="field">Jenis<select id="txType"><option value="expense">Pengeluaran</option><option value="income">Pemasukan</option></select></label>
@@ -330,7 +365,7 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th>Tanggal</th><th>Keterangan</th><th>Kategori</th><th>Jenis</th><th class="num">Nominal</th><th class="num">Saldo</th><th class="num">Aksi</th></tr>
+                <tr><th>Tanggal</th><th>Keterangan</th><th>Kategori</th><th>Jenis</th><th class="num">Nominal</th><th class="num">Saldo</th><th class="num admin-only">Aksi</th></tr>
               </thead>
               <tbody id="allRows"></tbody>
             </table>
@@ -346,7 +381,7 @@
           <h2>Status Anggaran (Global)</h2><p class="sub">Anggaran ini berlaku seterusnya, tidak terikat bulan.</p>
           <div id="budgetList" style="margin-top:24px;"></div>
         </div>
-        <div class="card" style="align-self: start;">
+        <div class="card admin-only" style="align-self: start;">
           <h2>Atur Anggaran</h2>
           <form id="budgetForm" class="form-grid" style="margin-top:24px;">
             <label class="field">Kategori<select id="budgetCategory"><option>Bahan Masakan</option><option>Jajan Anak</option><option>Kebutuhan Anak</option><option>Perlengkapan Kebersihan</option><option>Tagihan</option><option>Transport</option><option>Hiburan/Jajan</option><option>Sosial/Donasi</option><option>Investasi</option><option>Lifestyle</option><option>Aset</option><option>Maintenance</option><option>Kesehatan</option><option>Tabungan Nuha</option><option>Lainnya</option></select></label>
@@ -359,7 +394,7 @@
     </section>
 
     <section id="debtsTab" class="hidden">
-      <div class="grid-main" style="margin-bottom:24px;">
+      <div class="grid-main admin-only" style="margin-bottom:24px;">
         <div class="card">
           <h2>Form Utang / Piutang</h2>
           <form id="debtForm" class="form-grid" style="margin-top:20px;">
@@ -383,14 +418,14 @@
         <div class="card" style="border-top: 4px solid var(--p-red-txt);">
           <h2>Daftar Utang (Yang Harus Dibayar)</h2>
           <div class="table-wrap">
-            <table><thead><tr><th>Nama / Ket</th><th>Jatuh Tempo</th><th class="num">Total / Sisa</th><th>Progress</th><th class="num">Aksi</th></tr></thead><tbody id="payableRows"></tbody></table>
+            <table><thead><tr><th>Nama / Ket</th><th>Jatuh Tempo</th><th class="num">Total / Sisa</th><th>Progress</th><th class="num admin-only">Aksi</th></tr></thead><tbody id="payableRows"></tbody></table>
             <div id="payableEmpty" class="empty">Belum ada utang.</div>
           </div>
         </div>
         <div class="card" style="border-top: 4px solid var(--p-green-txt);">
           <h2>Daftar Piutang (Yang Harus Ditagih)</h2>
           <div class="table-wrap">
-            <table><thead><tr><th>Nama / Ket</th><th>Jatuh Tempo</th><th class="num">Total / Sisa</th><th>Progress</th><th class="num">Aksi</th></tr></thead><tbody id="receivableRows"></tbody></table>
+            <table><thead><tr><th>Nama / Ket</th><th>Jatuh Tempo</th><th class="num">Total / Sisa</th><th>Progress</th><th class="num admin-only">Aksi</th></tr></thead><tbody id="receivableRows"></tbody></table>
             <div id="receivableEmpty" class="empty">Belum ada piutang.</div>
           </div>
         </div>
@@ -398,7 +433,7 @@
     </section>
 
     <section id="goalsTab" class="hidden">
-      <div class="grid-main" style="margin-bottom:24px;">
+      <div class="grid-main admin-only" style="margin-bottom:24px;">
         <div class="card" style="border-top: 4px solid var(--p-purple-txt);">
           <h2>Form Target Tabungan</h2>
           <form id="goalForm" class="form-grid" style="margin-top:20px;">
@@ -428,6 +463,9 @@
 
 <script>
 const SUPABASE_URL='https://fzgplleraagrulxvcqzz.supabase.co',SUPABASE_ANON_KEY='sb_publishable_OrUWi8rUmgDmNAbdkxTpXw_LqHkr9GT';
+// ID KELUARGA UTAMA (Agar guest bisa lihat data tanpa login)
+const MAIN_HOUSEHOLD_ID = '15731766-96a0-4224-a313-5dbf9c8d8b58';
+
 const $=id=>document.getElementById(id);
 const money = n => new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
 const fmtDate = d => { if(!d) return '—'; let p=String(d).split('T')[0].split('-'); if(p.length<3) return d; return `${p[2]}/${p[1]}/${p[0]}`; };
@@ -440,13 +478,13 @@ let editingTxId = null;
 const today=new Date(), iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 $('month').value=iso(today).slice(0,7);$('txDate').value=iso(today);
 
-/* Premium month picker: buka native picker saat chip diklik */
+/* Premium month picker */
 (() => {
   const picker = $('monthPicker');
   const input  = $('month');
   if (!picker || !input) return;
   picker.addEventListener('click', (e) => {
-    if (e.target.closest('input')) return; // biarkan native handle
+    if (e.target.closest('input')) return;
     if (typeof input.showPicker === 'function') {
       try { input.showPicker(); } catch (_) { input.focus(); }
     } else {
@@ -470,7 +508,7 @@ function toggleTheme() {
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('theme', next);
   updateThemeIcon(next);
-  if (user) renderDashboard();
+  if (transactions.length || !user) renderDashboard();
 }
 themeToggle.onclick = toggleTheme;
 updateThemeIcon(document.documentElement.getAttribute('data-theme'));
@@ -499,13 +537,59 @@ $('budgetCategory').dispatchEvent(new Event('change'));
 
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function status(id,msg,bad=false){$(id).textContent=msg;$(id).style.color=bad?'var(--p-red-txt)':'var(--p-green-txt)'; setTimeout(()=>{if($(id).textContent===msg)$(id).textContent=''}, 4000);}
-function authUI(){ $('authView').classList.remove('hidden');$('appView').classList.add('hidden') }
-function appUI(){ $('authView').classList.add('hidden');$('appView').classList.remove('hidden') }
 
 function getCategoryBadge(cat) {
   let color = getCategoryColor(cat);
   let bg = getCategoryBg(cat);
   return `<span class="badge" style="background:${bg}; color:${color};">${esc(cat)}</span>`;
+}
+
+// ================= AUTH & UI LOGIC =================
+function openAuthModal() {
+  $('authView').classList.remove('hidden');
+  $('authUsername').focus();
+}
+function closeAuthModal() {
+  $('authView').classList.add('hidden');
+  $('authForm').reset();
+}
+function handleAuthAction() {
+  if (user) {
+    sb.auth.signOut();
+  } else {
+    openAuthModal();
+  }
+}
+
+function updateUIMode() {
+  const isGuest = !user;
+  
+  // Update tombol Login/Logout
+  const btn = $('logoutBtn');
+  if (isGuest) {
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg><span>Login</span>`;
+    btn.style.background = 'var(--p-green)';
+    btn.style.color = 'var(--p-green-txt)';
+    $('guestNotice').classList.remove('hidden');
+  } else {
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span>Keluar</span>`;
+    btn.style.background = 'var(--p-red)';
+    btn.style.color = 'var(--p-red-txt)';
+    $('guestNotice').classList.add('hidden');
+  }
+
+  // Sembunyikan/Tampilkan fitur Admin
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = isGuest ? 'none' : '';
+  });
+  
+  // Sembunyikan form edit (jika ada container form, bukan admin-only)
+  if(isGuest) {
+    // Pastikan form tambah transaksi tidak muncul
+    $('txForm').closest('.card').style.display = 'none';
+  } else {
+    $('txForm').closest('.card').style.display = '';
+  }
 }
 
 $('authForm').onsubmit=async e=>{
@@ -523,30 +607,28 @@ $('authForm').onsubmit=async e=>{
     let r = await sb.auth.signInWithPassword({email, password: pin});
     if(r.error) throw r.error;
     user = r.data.user; 
+    closeAuthModal();
     await startApp();
   } catch(err) { 
     status('authStatus', err.message === 'Invalid login credentials' ? 'Username atau PIN salah' : err.message, true); 
   }
 };
 
-$('logoutBtn').onclick=async()=>{await sb.auth.signOut();user=null;authUI()};
-$('month').onchange=loadData;
-$('householdSelect').onchange=async()=>{currentHouse=$('householdSelect').value;await loadData()};
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
-function showTab(name){document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));['dashboard','transactions','budgets','debts','goals'].forEach(t=>$(t+'Tab').classList.toggle('hidden',t!==name));}
+// ================= DATA FETCHING =================
 
 async function startApp(){
-  appUI();
+  updateUIMode();
   try {
-    await loadHouseholds();
-    if(!households.length){
-      let {error}=await sb.rpc('create_my_household',{household_name:'Keuangan Keluarga'});
-      if(error){ 
-        $('appNotice').textContent='Gagal membuat keluarga: '+error.message;
-        $('appNotice').classList.remove('hidden');
-        return; 
-      }
+    if (user) {
       await loadHouseholds();
+      if(!households.length){
+        let {error}=await sb.rpc('create_my_household',{household_name:'Keuangan Keluarga'});
+        if(error) throw error;
+        await loadHouseholds();
+      }
+    } else {
+      // Mode Guest: Gunakan rumah utama
+      currentHouse = MAIN_HOUSEHOLD_ID;
     }
     await loadData();
   } catch (e) {
@@ -630,7 +712,6 @@ async function loadData(){
     debts = results[1].data || [];
     goals = results[2].data || [];
     
-    // PERBAIKAN BUG RELASI: Ambil profil secara terpisah
     let membersData = results[3].data || [];
     let userIds = membersData.map(m => m.user_id);
     let profilesData = [];
@@ -648,7 +729,6 @@ async function loadData(){
     yIncomeTotal = yearly.income;
     yExpenseTotal = yearly.expense;
 
-    // --- HITUNG SALDO BERJALAN (RUNNING BALANCE) ---
     let runningBal = saldoAwal;
     let chronoTx = [...transactions].sort((a,b) => {
       let da = String(a.transaction_date), db = String(b.transaction_date);
@@ -673,12 +753,12 @@ async function loadData(){
 }
 
 function renderAll(){ 
-  try { renderDashboard(); } catch(e) { console.error("Dashboard error:", e); }
-  try { renderTransactions(); } catch(e) { console.error("Transactions error:", e); }
-  try { renderBudgets(); } catch(e) { console.error("Budgets error:", e); }
-  try { renderDebts(); } catch(e) { console.error("Debts error:", e); }
-  try { renderGoals(); } catch(e) { console.error("Goals error:", e); }
-  try { fillMemberSelect(); } catch(e) { console.error("Members error:", e); }
+  try { renderDashboard(); } catch(e) { console.error(e); }
+  try { renderTransactions(); } catch(e) { console.error(e); }
+  try { renderBudgets(); } catch(e) { console.error(e); }
+  try { renderDebts(); } catch(e) { console.error(e); }
+  try { renderGoals(); } catch(e) { console.error(e); }
+  try { fillMemberSelect(); } catch(e) { console.error(e); }
 }
 
 function renderDashboard(){
@@ -745,13 +825,13 @@ function txRow(t){
     <td><span class="badge ${t.type==='income'?'bg-green':'bg-red'}">${t.type==='income'?'Masuk':'Keluar'}</span></td>
     <td class="num ${t.type==='income'?'text-green':'text-red'}">${money(t.amount)}</td>
     <td class="num" style="font-weight:700;">${money(t.runningBalance)}</td>
-    <td class="num" style="white-space:nowrap;">
+    <td class="num admin-only" style="white-space:nowrap;">
       <button class="btn btn-amber" style="padding:8px 12px; font-size:12px; margin-right:6px; border-radius:8px;" onclick="editTx('${t.id}')">Edit</button>
       <button class="btn btn-red" style="padding:8px 12px; font-size:12px; border-radius:8px;" onclick="deleteTx('${t.id}')">Hapus</button>
     </td>
   </tr>`;
 }
-function renderTransactions(){ let list=transactions.filter(t=>$('txFilter').value==='all'||t.type===$('txFilter').value); $('allRows').innerHTML=list.map(t=>txRow(t)).join(''); $('allEmpty').classList.toggle('hidden',list.length>0); }
+function renderTransactions(){ let list=transactions.filter(t=>$('txFilter').value==='all'||t.type===$('txFilter').value); $('allRows').innerHTML=list.map(t=>txRow(t)).join(''); $('allEmpty').classList.toggle('hidden',list.length>0); updateUIMode(); }
 $('txFilter').onchange=renderTransactions;
 function fillMemberSelect(){$('txMember').innerHTML=members.map(m=>`<option value="${m.user_id}" ${m.user_id===(user?user.id:'')?'selected':''}>${esc(m.profiles?.display_name||m.profiles?.email||'Anggota')}</option>`).join('')}
 
@@ -781,7 +861,7 @@ function renderBudgets(){
   $('budgetList').innerHTML=budgets.length?budgets.map(b=>{ 
     let s=spent[b.category]||0,p=Math.min(100,s/Number(b.limit_amount)*100),isOver=p>=100; 
     let bg = getCategoryBg(b.category);
-    return `<div style="margin-bottom:24px;"><div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:14px; align-items:center;"><b>${getCategoryBadge(b.category)}</b><span style="color:var(--muted); font-weight:700;">${money(s)} / ${money(b.limit_amount)}</span></div><div style="height:10px; background:var(--card-soft); border-radius:6px; overflow:hidden;"><div style="height:100%; width:${p}%; background:${bg}; border-radius:6px; transition:width 0.5s;"></div></div><div style="display:flex; justify-content:space-between; margin-top:10px; font-size:12px; color:var(--muted); font-weight:600;"><span>${isOver?'<span style="color:var(--p-red-txt)">Melebihi batas!</span>':Math.round(p)+'% terpakai'}</span><button class="btn btn-red" style="padding:6px 12px; font-size:11px; border-radius:8px;" onclick="removeBudget('${b.id}')">Hapus</button></div></div>` 
+    return `<div style="margin-bottom:24px;"><div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:14px; align-items:center;"><b>${getCategoryBadge(b.category)}</b><span style="color:var(--muted); font-weight:700;">${money(s)} / ${money(b.limit_amount)}</span></div><div style="height:10px; background:var(--card-soft); border-radius:6px; overflow:hidden;"><div style="height:100%; width:${p}%; background:${bg}; border-radius:6px; transition:width 0.5s;"></div></div><div style="display:flex; justify-content:space-between; margin-top:10px; font-size:12px; color:var(--muted); font-weight:600;"><span>${isOver?'<span style="color:var(--p-red-txt)">Melebihi batas!</span>':Math.round(p)+'% terpakai'}</span><button class="btn btn-red admin-only" style="padding:6px 12px; font-size:11px; border-radius:8px;" onclick="removeBudget('${b.id}')">Hapus</button></div></div>` 
   }).join(''):'<div class="empty">Belum ada anggaran.</div>' 
 }
 $('budgetForm').onsubmit=async e=>{
@@ -800,7 +880,7 @@ function renderDebts(){
   function makeRow(d) {
     let total = Number(d.amount); let paid = Number(d.paid_amount); let remain = total - paid; let pct = total > 0 ? (paid / total) * 100 : 0; let isDone = paid >= total;
     let noteHtml = d.note ? `<br><span style="font-size:11px; color:var(--muted); white-space:pre-wrap; margin-top:4px; display:block;">${esc(d.note)}</span>` : '';
-    return `<tr><td><b>${esc(d.party)}</b>${noteHtml}</td><td style="color:var(--muted); font-weight:600;">${d.due_date ? fmtDate(d.due_date) : '—'}</td><td class="num"><div style="font-size:12px; color:var(--muted); font-weight:600;">Sisa: <b style="color:var(--ink); font-size:14px;">${money(remain)}</b></div><div style="font-size:11px; color:var(--faint); font-weight:600;">dari ${money(total)}</div></td><td style="width:120px;"><div style="height:6px; background:var(--card-soft); border-radius:4px; overflow:hidden;"><div style="height:100%; width:${pct}%; background:${isDone?'#34D399':'#60A5FA'}; border-radius:4px;"></div></div><div style="font-size:11px; color:var(--muted); text-align:right; margin-top:4px; font-weight:600;">${Math.round(pct)}%</div></td><td class="num" style="white-space:nowrap;">${!isDone ? `<button class="btn btn-blue" style="padding:6px 12px; font-size:11px; margin-right:4px; border-radius:8px;" onclick="payDebt('${d.id}')">Cicil</button>` : ''}<button class="btn btn-amber" style="padding:6px 12px; font-size:11px; margin-right:4px; border-radius:8px;" onclick="editDebt('${d.id}')">Edit</button><button class="btn btn-red" style="padding:6px 12px; font-size:11px; border-radius:8px;" onclick="deleteDebt('${d.id}')">Hapus</button></td></tr>`;
+    return `<tr><td><b>${esc(d.party)}</b>${noteHtml}</td><td style="color:var(--muted); font-weight:600;">${d.due_date ? fmtDate(d.due_date) : '—'}</td><td class="num"><div style="font-size:12px; color:var(--muted); font-weight:600;">Sisa: <b style="color:var(--ink); font-size:14px;">${money(remain)}</b></div><div style="font-size:11px; color:var(--faint); font-weight:600;">dari ${money(total)}</div></td><td style="width:120px;"><div style="height:6px; background:var(--card-soft); border-radius:4px; overflow:hidden;"><div style="height:100%; width:${pct}%; background:${isDone?'#34D399':'#60A5FA'}; border-radius:4px;"></div></div><div style="font-size:11px; color:var(--muted); text-align:right; margin-top:4px; font-weight:600;">${Math.round(pct)}%</div></td><td class="num admin-only" style="white-space:nowrap;">${!isDone ? `<button class="btn btn-blue" style="padding:6px 12px; font-size:11px; margin-right:4px; border-radius:8px;" onclick="payDebt('${d.id}')">Cicil</button>` : ''}<button class="btn btn-amber" style="padding:6px 12px; font-size:11px; margin-right:4px; border-radius:8px;" onclick="editDebt('${d.id}')">Edit</button><button class="btn btn-red" style="padding:6px 12px; font-size:11px; border-radius:8px;" onclick="deleteDebt('${d.id}')">Hapus</button></td></tr>`;
   }
   $('payableRows').innerHTML = payable.map(makeRow).join(''); $('payableEmpty').classList.toggle('hidden', payable.length > 0);
   $('receivableRows').innerHTML = receivable.map(makeRow).join(''); $('receivableEmpty').classList.toggle('hidden', receivable.length > 0);
@@ -829,7 +909,7 @@ window.deleteDebt = async (id) => { if(!confirm('Hapus catatan utang/piutang ini
 function renderGoals(){
   $('goalList').innerHTML = goals.length ? goals.map(g => {
     let target = Number(g.target_amount); let saved = Number(g.saved_amount); let p = Math.min(100, (saved / target) * 100); let isDone = saved >= target;
-    return `<div style="padding:24px; border:1px solid var(--line); border-radius:20px; background:var(--card-soft);"><div style="display:flex; justify-content:space-between; margin-bottom:12px; font-size:16px;"><b>${esc(g.name)}</b><span style="color:${isDone?'var(--p-green-txt)':'var(--muted)'}; font-weight:800;">${Math.round(p)}%</span></div><div style="height:12px; background:var(--card); border-radius:8px; overflow:hidden; margin-bottom:12px;"><div style="height:100%; width:${p}%; background:${isDone?'#34D399':'#60A5FA'}; border-radius:8px;"></div></div><div style="display:flex; justify-content:space-between; font-size:13px; color:var(--muted); font-weight:600; margin-bottom:16px;"><span>Terkumpul: <b style="color:var(--ink);">${money(saved)}</b></span><span>Target: ${money(target)}</span></div><div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;"><button class="btn btn-green" style="padding:8px 12px; font-size:12px; border-radius:8px;" onclick="addSaving('${g.id}')">Tambah Dana</button><button class="btn btn-amber" style="padding:8px 12px; font-size:12px; border-radius:8px;" onclick="withdrawSaving('${g.id}')">Tarik Dana</button><button class="btn btn-blue" style="padding:8px 12px; font-size:12px; border-radius:8px;" onclick="editGoal('${g.id}')">Edit</button><button class="btn btn-red" style="padding:8px 12px; font-size:12px; border-radius:8px;" onclick="deleteGoal('${g.id}')">Hapus</button></div></div>`;
+    return `<div style="padding:24px; border:1px solid var(--line); border-radius:20px; background:var(--card-soft);"><div style="display:flex; justify-content:space-between; margin-bottom:12px; font-size:16px;"><b>${esc(g.name)}</b><span style="color:${isDone?'var(--p-green-txt)':'var(--muted)'}; font-weight:800;">${Math.round(p)}%</span></div><div style="height:12px; background:var(--card); border-radius:8px; overflow:hidden; margin-bottom:12px;"><div style="height:100%; width:${p}%; background:${isDone?'#34D399':'#60A5FA'}; border-radius:8px;"></div></div><div style="display:flex; justify-content:space-between; font-size:13px; color:var(--muted); font-weight:600; margin-bottom:16px;"><span>Terkumpul: <b style="color:var(--ink);">${money(saved)}</b></span><span>Target: ${money(target)}</span></div><div class="admin-only" style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;"><button class="btn btn-green" style="padding:8px 12px; font-size:12px; border-radius:8px;" onclick="addSaving('${g.id}')">Tambah Dana</button><button class="btn btn-amber" style="padding:8px 12px; font-size:12px; border-radius:8px;" onclick="withdrawSaving('${g.id}')">Tarik Dana</button><button class="btn btn-blue" style="padding:8px 12px; font-size:12px; border-radius:8px;" onclick="editGoal('${g.id}')">Edit</button><button class="btn btn-red" style="padding:8px 12px; font-size:12px; border-radius:8px;" onclick="deleteGoal('${g.id}')">Hapus</button></div></div>`;
   }).join('') : '<div class="empty">Belum ada target tabungan.</div>';
 }
 $('goalForm').onsubmit=async e=>{
@@ -858,35 +938,24 @@ window.withdrawSaving = async id => {
   if(error) alert(error.message); else await loadData();
 };
 
-/* 
-  PERBAIKAN BUG SESSION/REFRESH:
-  Kita cek session, jika ada user kita panggil startApp. Jika error, JANGAN logout paksa,
-  tapi tetap tampilkan appUI agar tidak kelempar ke halaman login.
-*/
+// ================= INIT =================
 (async()=>{
   sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
   let {data} = await sb.auth.getSession();
   if(data && data.session){
     user = data.session.user;
-    try { 
-      await startApp(); 
-    } catch(e) { 
-      console.error(e); 
-      appUI(); 
-      $('appNotice').textContent = 'Gagal memuat data awal: ' + e.message;
-      $('appNotice').classList.remove('hidden');
-    }
-  } else {
-    authUI();
   }
+  
+  // Render Guest mode (atau user mode) langsung tanpa nunggu klik
+  await startApp();
 
   sb.auth.onAuthStateChange(async(event,session)=>{
     if(session && !user){ 
       user = session.user; 
-      try { await startApp(); } catch(e) { console.error(e); }
+      await startApp(); 
     } else if(!session && user){ 
       user = null; 
-      authUI(); 
+      await startApp(); 
     }
   });
 })();
