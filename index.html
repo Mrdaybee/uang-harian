@@ -6,33 +6,12 @@
 <title>Uang Harian — Dashboard Finansial</title>
 <link rel="icon" type="image/png" href="Logo.png">
 <link rel="apple-touch-icon" href="Logo.png">
-<link id="manifest-placeholder" rel="manifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  (function() {
-    const manifest = {
-      name: "Uang Harian", short_name: "Uang Harian", start_url: ".", display: "standalone",
-      background_color: "#F8FAFC", theme_color: "#8B5CF6",
-      icons: [{ src: "Logo.png", sizes: "192x192 512x512", type: "image/png" }]
-    };
-    const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
-    document.querySelector('#manifest-placeholder').setAttribute('href', URL.createObjectURL(blob));
-
-    if ('serviceWorker' in navigator) {
-      const swCode = `
-        self.addEventListener('install', e => self.skipWaiting());
-        self.addEventListener('activate', e => self.clients.claim());
-        self.addEventListener('fetch', e => {});
-      `;
-      const swBlob = new Blob([swCode], {type: 'application/javascript'});
-      navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(err => console.log('SW error', err));
-    }
-  })();
-
   (function() {
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -707,7 +686,7 @@ async function loadData(){
   let year = month.slice(0, 4);
   
   try {
-    transactions = await fetchAllPages('transactions', sb.from('transactions').select('*').eq('household_id',currentHouse).gte('transaction_date',start).lt('transaction_date',endStr).order('transaction_date',{ascending:false}).order('id',{ascending:false}).order('created_at',{ascending:false}));
+    transactions = await fetchAllPages('transactions', sb.from('transactions').select('*').eq('household_id',currentHouse).gte('transaction_date',start).lt('transaction_date',endStr).order('transaction_date',{ascending:false}).order('created_at',{ascending:false}).order('id',{ascending:false}));
     
     let results = await Promise.all([
       sb.from('budgets').select('*').eq('household_id',currentHouse).order('created_at', { ascending: true }),
@@ -746,7 +725,8 @@ async function loadData(){
       let da = String(a.transaction_date), db = String(b.transaction_date);
       if(da !== db) return da.localeCompare(db);
       let ca = String(a.created_at || ''), cb = String(b.created_at || '');
-      return ca.localeCompare(cb);
+      if(ca !== cb) return ca.localeCompare(cb);
+      return String(a.id).localeCompare(String(b.id));
     });
     chronoTx.forEach(t => {
       if(t.type === 'income') runningBal += Number(t.amount);
