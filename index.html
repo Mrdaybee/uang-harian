@@ -673,7 +673,7 @@ async function fetchAllPages(table, queryBuilder) {
 async function getSaldoAwal(houseId, startDate) {
   let sum = 0; let from = 0; let limit = 1000; let hasMore = true;
   while (hasMore) {
-    let { data, error } = await sb.from('transactions').select('amount, type').eq('household_id', houseId).lt('transaction_date', startDate).range(from, from + limit - 1);
+    let { data, error } = await sb.from('transactions').select('amount, type').eq('household_id', houseId).lt('transaction_date', startDate).order('transaction_date', { ascending: true }).order('id', { ascending: true }).range(from, from + limit - 1);
     if (error) { console.error(error); break; }
     if (data && data.length > 0) { data.forEach(t => { sum += (t.type === 'income' ? Number(t.amount) : -Number(t.amount)); }); }
     if (!data || data.length < limit) { hasMore = false; } else { from += limit; }
@@ -688,7 +688,7 @@ async function getYearlyTotals(houseId, year) {
   let from = 0; let limit = 1000; let hasMore = true;
   
   while (hasMore) {
-    let { data, error } = await sb.from('transactions').select('amount, type').eq('household_id', houseId).gte('transaction_date', start).lt('transaction_date', end).range(from, from + limit - 1);
+    let { data, error } = await sb.from('transactions').select('amount, type').eq('household_id', houseId).gte('transaction_date', start).lt('transaction_date', end).order('transaction_date', { ascending: true }).order('id', { ascending: true }).range(from, from + limit - 1);
     if (error) { console.error(error); break; }
     if (data && data.length > 0) {
       data.forEach(t => {
@@ -707,7 +707,7 @@ async function loadData(){
   let year = month.slice(0, 4);
   
   try {
-    transactions = await fetchAllPages('transactions', sb.from('transactions').select('*').eq('household_id',currentHouse).gte('transaction_date',start).lt('transaction_date',endStr).order('transaction_date',{ascending:false}).order('created_at',{ascending:false}));
+    transactions = await fetchAllPages('transactions', sb.from('transactions').select('*').eq('household_id',currentHouse).gte('transaction_date',start).lt('transaction_date',endStr).order('transaction_date',{ascending:false}).order('id',{ascending:false}).order('created_at',{ascending:false}));
     
     let results = await Promise.all([
       sb.from('budgets').select('*').eq('household_id',currentHouse).order('created_at', { ascending: true }),
