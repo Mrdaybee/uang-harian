@@ -1,0 +1,14 @@
+{
+  "name": "Uang Harian",
+  "short_name": "Uang Harian",
+  "description": "Dashboard finansial keluarga — pantau arus kas, anggaran, utang/piutang, dan target tabungan.",
+  "lang": "id",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#8B5CF6",
+  "icons": [
+    { "src": "Logo.png", "sizes": "192x192 512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
